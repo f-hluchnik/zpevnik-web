@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} — {{ site.title }}{% endblock %}
+
+{% block content %}
+<article class="post">
+  <p class="post-date">{{ post.date.strftime('%Y.%m.%d') }}</p>
+  <h1 class="post-title">{{ post.title }}</h1>
+  {% if post.tags %}
+  <p class="post-tags">{% for tag in post.tags %}<a href="/tags/{{ tag }}/">{{ tag }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+  {% endif %}
+  <div class="post-content">
+    {{ post.content | safe }}
+  </div>
+  <p class="back-link"><a href="/">&larr; All posts</a></p>
+</article>
+{% endblock %}
