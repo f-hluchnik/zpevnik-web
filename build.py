@@ -4,6 +4,7 @@ Static site generator for the songbook site.
 Syncs shared theme assets (base.html, style.css) from the main blog repo.
 """
 
+import datetime
 import shutil
 import sys
 import urllib.error
@@ -25,9 +26,11 @@ OUTPUT_DIR = ROOT / "dist"
 RAW_BLOG_BASE = "https://raw.githubusercontent.com/f-hluchnik/blog/main"
 
 SITE = {
-    "title": "A Notebook of Ordinary Things",
-    "description": "Bread, running, books, and other notes from life.",
+    "title": "Zápisník obyčejných věcí",
+    "description": "Běh, chleba, knihy a další poznámky z běžného života.",
     "url": "https://zpevnik.hluchnikovi.cz",
+    "nav": {"posts": "Příspěvky", "tags": "Štítky", "about": "O mně", "songbook": "Zpěvník"},
+    "lang": "cs"
 }
 
 
@@ -80,7 +83,10 @@ def load_pages() -> list[dict]:
 def render(env: Environment, template_name: str, out_path: Path, **context) -> None:
     template = env.get_template(template_name)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(template.render(site=SITE, **context), encoding="utf-8")
+    out_path.write_text(
+        template.render(site=SITE, current_year=datetime.now().year, **context),
+        encoding="utf-8",
+    )
 
 
 def build() -> None:
