@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}#{{ tag }} — {{ site.title }}{% endblock %}
+
+{% block content %}
+<h1 class="archive-title">Posts tagged &ldquo;{{ tag }}&rdquo;</h1>
+<ul class="post-list">
+  {% for post in posts %}
+  <li class="post-item">
+    <span class="post-date">{{ post.date.strftime('%Y.%m.%d') }}</span>
+    <a class="post-title" href="{{ post.url }}">{{ post.title }}</a>
+  </li>
+  {% endfor %}
+</ul>
+<p class="back-link"><a href="/tags/">&larr; All tags</a></p>
+{% endblock %}
