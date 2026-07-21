@@ -45,7 +45,7 @@ Mou další představou je ilustrace zpěvníku a přidání Plíhalových básn
   </div>
 </details>
 
-<details class="accordion">
+<details class="accordion" markdown="1">
   <summary>Zajímavosti & Detaily</summary>
   <div class="accordion-content" markdown="1">
 
