@@ -4,11 +4,11 @@ Static site generator for the songbook site.
 Syncs shared theme assets (base.html, style.css) from the main blog repo.
 """
 
-import datetime
 import shutil
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -38,6 +38,10 @@ def sync_shared_assets():
     """Fetch latest base.html and style.css from the main blog repository."""
     assets = [
         (f"{RAW_BLOG_BASE}/templates/base.html", TEMPLATES_DIR / "base.html"),
+        (f"{RAW_BLOG_BASE}/static/favicon-32x32.png", STATIC_DIR / "favicon-32x32.png"),
+        (f"{RAW_BLOG_BASE}/static/favicon-16x16.png", STATIC_DIR / "favicon-16x16.png"),
+        (f"{RAW_BLOG_BASE}/static/apple-touch-icon.png", STATIC_DIR / "apple-touch-icon.png"),
+        (f"{RAW_BLOG_BASE}/static/site.webmanifest", STATIC_DIR / "site.webmanifest"),
         (f"{RAW_BLOG_BASE}/static/style.css", STATIC_DIR / "style.css"),
     ]
 
