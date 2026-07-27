@@ -1,10 +1,14 @@
+{# A single authored page: content/pages/<slug>.md.
+   Same markup as the blog's page.html, on purpose. #}
 {% extends "base.html" %}
 
-{% block title %}{{ page.title }} — {{ site.title }}{% endblock %}
+{% block title %}{% if page.is_home %}{{ site.title }}{% else %}{{ page.title }} — {{ site.title }}{% endif %}{% endblock %}
 
 {% block content %}
-<article class="post">
-  <h1 class="post-title">{{ page.title }}</h1>
+<article>
+  {# The front page still needs an h1; it just does not need to show one,
+     because the site title above already says the same thing. #}
+  <h1 class="page-title{% if page.is_home %} visually-hidden{% endif %}">{{ page.title }}</h1>
   <div class="post-content">
     {{ page.content | safe }}
   </div>

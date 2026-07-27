@@ -1,20 +1,45 @@
 #!/usr/bin/env python3
+"""Static site generator for the songbook site.
+
+Two kinds of thing:
+
+  * content   -- Markdown you write, in `content/pages/`. One file per page;
+                 `index.md` becomes the front page.
+  * templates -- Jinja2 HTML in `templates/`, one per *shape*. There is only
+                 one shape here (`page.html`), because there is nothing to
+                 index: no posts, no tags, no archives.
+
+`build()` reads the content and writes plain HTML into `dist/`. That directory
+is the entire website; it is gitignored and rebuilt from scratch every run.
+
+Fully standalone: nothing is fetched from the blog repo at build time, and the
+two sites look deliberately different. They are linked only by ordinary
+hyperlinks -- this site's footer, and the blog's "Projekty" page. What they do
+share is the shape of this file: it is a subset of the blog's build.py, with
+the same names in the same order.
+
+Usage:
+    python build.py            # build into dist/
+    python build.py --serve    # build, then serve dist/ on localhost:8000
 """
-Static site generator for the songbook site.
-Syncs shared theme assets (base.html, style.css) from the main blog repo.
-"""
+
+from __future__ import annotations
 
 import shutil
 import sys
-import urllib.error
-import urllib.request
-from datetime import datetime
+from datetime import date
+from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import urlparse
 
 import markdown
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+
+# --------------------------------------------------------------------------
+# Configuration
+# --------------------------------------------------------------------------
 
 ROOT = Path(__file__).parent
 PAGES_DIR = ROOT / "content" / "pages"
@@ -22,113 +47,139 @@ TEMPLATES_DIR = ROOT / "templates"
 STATIC_DIR = ROOT / "static"
 OUTPUT_DIR = ROOT / "dist"
 
-# Replace with your GitHub username and blog repository name
-RAW_BLOG_BASE = "https://raw.githubusercontent.com/f-hluchnik/blog/main"
+SERVE_ADDRESS = ("localhost", 8000)
 
-SITE = {
-    "title": "Zápisník obyčejných věcí",
-    "description": "Běh, chleba, knihy a další poznámky z běžného života.",
-    "url": "https://zpevnik.hluchnikovi.cz",
-    "nav": {"posts": "Příspěvky", "tags": "Štítky", "about": "O mně", "songbook": "Zpěvník"},
-    "lang": "cs"
+# `extra` is a bundle. The part that matters here is md_in_html, which lets the
+# raw <details markdown="1"> accordions in index.md still render as Markdown;
+# drop it and that content comes out as literal text. `footnotes` is named
+# again so MARKDOWN_CONFIG can reach it.
+MARKDOWN_EXTENSIONS = ["extra", "footnotes", "sane_lists", "smarty"]
+
+# The two extensions that emit text of their own, which defaults to English.
+MARKDOWN_CONFIG = {
+    "footnotes": {"BACKLINK_TITLE": "Zpět na odkaz na poznámku {}"},
+    "smarty": {
+        "substitutions": {
+            "left-double-quote": "&bdquo;",  # Czech quotes are „like this“
+            "right-double-quote": "&ldquo;",
+            "left-single-quote": "&sbquo;",
+            "right-single-quote": "&lsquo;",
+        }
+    },
 }
 
+SITE = {
+    "lang": "cs",
+    "title": "Ještě mi chvilku zpívej",
+    "description": "Zpěvník, který píšu v LaTeXu od roku 2019.",
+    "url": "https://zpevnik.hluchnikovi.cz",
+    "blog_url": "https://f.hluchnikovi.cz/",
+    "blog_title": "Komorebi",
+}
 
-def sync_shared_assets():
-    """Fetch latest base.html and style.css from the main blog repository."""
-    assets = [
-        (f"{RAW_BLOG_BASE}/templates/base.html", TEMPLATES_DIR / "base.html"),
-        (f"{RAW_BLOG_BASE}/static/favicon-32x32.png", STATIC_DIR / "favicon-32x32.png"),
-        (f"{RAW_BLOG_BASE}/static/favicon-16x16.png", STATIC_DIR / "favicon-16x16.png"),
-        (f"{RAW_BLOG_BASE}/static/apple-touch-icon.png", STATIC_DIR / "apple-touch-icon.png"),
-        (f"{RAW_BLOG_BASE}/static/site.webmanifest", STATIC_DIR / "site.webmanifest"),
-        (f"{RAW_BLOG_BASE}/static/style.css", STATIC_DIR / "style.css"),
-    ]
+env = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(["html"]),
+    # Fail the build on a missing or misspelled variable rather than quietly
+    # rendering an empty string -- a missing SITE["title"] once shipped an
+    # empty <title> exactly that way.
+    undefined=StrictUndefined,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
 
-    print("Syncing shared theme assets from main blog repo...")
-    for url, target_path in assets:
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "BuildScript"})
-            with urllib.request.urlopen(req, timeout=5) as response:
-                target_path.write_bytes(response.read())
-            print(f"  ✓ Updated {target_path.name}")
-        except (urllib.error.URLError, TimeoutError) as e:
-            if target_path.exists():
-                print(f"  ⚠️ Could not fetch {target_path.name} ({e}). Using local cached copy.")
-            else:
-                print(f"  ❌ Error fetching {target_path.name} and no local copy exists!")
-                sys.exit(1)
+
+# --------------------------------------------------------------------------
+# Parsing
+# --------------------------------------------------------------------------
 
 
 def split_front_matter(raw: str) -> tuple[dict, str]:
-    if not raw.startswith("---"):
+    """Split '---\\nyaml\\n---\\nbody' into (metadata, body). A file that only
+    opens with a thematic break is returned untouched."""
+    if not raw.startswith("---\n") or raw.count("---", 1) == 0:
         return {}, raw
-    _, fm_raw, body_raw = raw.split("---", 2)
-    meta = yaml.safe_load(fm_raw) or {}
-    return meta, body_raw.strip()
+    _, front_matter, body = raw.split("---", 2)
+    return yaml.safe_load(front_matter) or {}, body.strip()
+
+
+def render_markdown(body: str) -> str:
+    # A fresh converter per document: a reused Markdown instance carries state
+    # between conversions (footnote numbering, most visibly).
+    return markdown.markdown(
+        body, extensions=MARKDOWN_EXTENSIONS, extension_configs=MARKDOWN_CONFIG
+    )
 
 
 def parse_page(path: Path) -> dict:
-    raw = path.read_text(encoding="utf-8")
-    meta, body = split_front_matter(raw)
-    html = markdown.markdown(body, extensions=["extra", "sane_lists", "smarty"])
+    """One file in content/pages/ -> a page dict.
+
+    `index.md` is the front page and lands at dist/index.html; every other page
+    gets its own directory, so its URL has no .html suffix.
+    """
+    meta, body = split_front_matter(path.read_text(encoding="utf-8"))
+    slug = meta.get("slug") or path.stem
+    is_home = slug == "index"
     return {
-        "title": meta.get("title", path.stem.replace("-", " ").title()),
-        "slug": path.stem,
-        "content": html,
+        "title": meta.get("title", SITE["title"] if is_home else slug),
+        "slug": slug,
+        "is_home": is_home,
+        "output_path": Path("index.html") if is_home else Path(slug) / "index.html",
+        "content": render_markdown(body),
     }
 
 
 def load_pages() -> list[dict]:
-    return [parse_page(p) for p in sorted(PAGES_DIR.glob("*.md"))]
+    return [parse_page(path) for path in sorted(PAGES_DIR.glob("*.md"))]
 
 
-def render(env: Environment, template_name: str, out_path: Path, **context) -> None:
-    template = env.get_template(template_name)
+# --------------------------------------------------------------------------
+# Rendering
+# --------------------------------------------------------------------------
+
+
+def render(template_name: str, out_path: Path, **context) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
-        template.render(site=SITE, current_year=datetime.now().year, **context),
+        env.get_template(template_name).render(
+            site=SITE, current_year=date.today().year, **context
+        ),
         encoding="utf-8",
     )
 
 
 def build() -> None:
-    # 1. Sync theme assets first
-    sync_shared_assets()
+    # Parse before deleting dist/, so a broken page leaves the previous build
+    # in place instead of an empty directory.
+    pages = load_pages()
 
-    # 2. Re-initialize Jinja env to pick up updated base.html
-    env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
-
-    # 3. Re-create dist directory
     if OUTPUT_DIR.exists():
         shutil.rmtree(OUTPUT_DIR)
     OUTPUT_DIR.mkdir(parents=True)
 
-    # 4. Render pages
-    pages = load_pages()
     for page in pages:
-        out = (
-            OUTPUT_DIR / "index.html"
-            if page["slug"] == "index"
-            else OUTPUT_DIR / page["slug"] / "index.html"
-        )
-        render(env, "page.html", out, page=page)
+        render("page.html", OUTPUT_DIR / page["output_path"], page=page)
 
-    # 5. Copy static assets
+    # GitHub Pages serves /404.html for any path it cannot match.
+    render("404.html", OUTPUT_DIR / "404.html")
+
     if STATIC_DIR.exists():
         shutil.copytree(STATIC_DIR, OUTPUT_DIR / "static")
 
-    print(f"Built {len(pages)} page(s) -> {OUTPUT_DIR}/")
+    # Derived from SITE["url"], so the domain is configured in one place
+    # instead of also being hardcoded in the deploy workflow.
+    (OUTPUT_DIR / "CNAME").write_text(urlparse(SITE["url"]).netloc + "\n", encoding="utf-8")
+
+    print(f"Built {len(pages)} page(s) -> dist/")
 
 
 def serve() -> None:
-    import functools
-
-    handler = functools.partial(SimpleHTTPRequestHandler, directory=str(OUTPUT_DIR))
-    server = HTTPServer(("localhost", 8000), handler)
-    print("Serving http://localhost:8000 (Ctrl+C to stop)")
-    server.serve_forever()
+    handler = partial(SimpleHTTPRequestHandler, directory=str(OUTPUT_DIR))
+    print("Serving http://{}:{}  (Ctrl+C to stop)".format(*SERVE_ADDRESS))
+    try:
+        HTTPServer(SERVE_ADDRESS, handler).serve_forever()
+    except KeyboardInterrupt:
+        print()
 
 
 if __name__ == "__main__":

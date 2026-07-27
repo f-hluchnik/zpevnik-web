@@ -1,18 +1,22 @@
-name: Deploy blog
+# Builds on every push and pull request; publishes only from main.
+# A branch or a pull request therefore tells you the site still builds before
+# you merge, without touching what is live.
+name: Build & deploy
 
 on:
   push:
-    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  # Deployments must not cancel each other: killing actions/deploy-pages
+  # mid-flight leaves the Pages environment stuck. Only builds are cheap
+  # enough to cancel, and they are scoped per ref.
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -23,17 +27,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - run: pip install -r requirements.txt
+
+      # build.py also writes dist/CNAME, derived from SITE["url"], so the
+      # custom domain is configured in exactly one place.
       - run: python build.py
-      - run: echo "zpevnik.hluchnikovi.cz" > dist/CNAME
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
     needs: build
+    # Only main goes live. A manual dispatch on a branch builds but does not
+    # publish, which `github.event_name != 'pull_request'` would have allowed.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

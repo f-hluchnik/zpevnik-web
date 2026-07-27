@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="{{ site.lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site.title }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ site.description }}{% endblock %}">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&display=swap">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfaf4">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101d18">
+
+  <link rel="stylesheet" href="/static/style.css">
+  {# Deliberately render-blocking: it sets data-theme before first paint, #}
+  {# which is what stops a light flash on a dark-mode reader's screen. #}
+  <script src="/static/theme.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-header-content">
+        <a class="site-title" href="/">{{ site.title }}</a>
+        <p class="site-tagline">{{ site.description }}</p>
+      </div>
+      {% include "_theme-toggle.html" %}
+    </header>
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; {{ current_year }} &middot; <a class="footer-link" href="{{ site.blog_url }}">{{ site.blog_title }}</a></p>
+    </footer>
+  </div>
+</body>
+</html>
