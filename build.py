@@ -111,13 +111,15 @@ def render_markdown(body: str) -> str:
     )
 
 
-def parse_page(path: Path) -> dict:
-    """One file in content/pages/ -> a page dict.
+def parse_page(raw: str, path: Path) -> dict:
+    """One page's raw source -> a page dict.
 
     `index.md` is the front page and lands at dist/index.html; every other page
-    gets its own directory, so its URL has no .html suffix.
+    gets its own directory, so its URL has no .html suffix. `path` is only used
+    for its stem (slug) -- for templated pages this is the resolved *.md name,
+    not the *.md.tpl source file.
     """
-    meta, body = split_front_matter(path.read_text(encoding="utf-8"))
+    meta, body = split_front_matter(raw)
     slug = meta.get("slug") or path.stem
     is_home = slug == "index"
     return {
@@ -130,7 +132,29 @@ def parse_page(path: Path) -> dict:
 
 
 def load_pages() -> list[dict]:
-    return [parse_page(path) for path in sorted(PAGES_DIR.glob("*.md"))]
+    """Load every page in content/pages/.
+
+    A page is either a plain `*.md` file, or a `*.md.tpl` template rendered
+    in-memory (currently just a __VERSION__ substitution, read from
+    version.txt at the repo root -- written by the songbook repo's CI
+    whenever it publishes a new PDF). Templates are never written back to
+    disk, so a local `python build.py` run leaves the working tree untouched.
+    """
+    pages = [
+        parse_page(path.read_text(encoding="utf-8"), path)
+        for path in sorted(PAGES_DIR.glob("*.md"))
+    ]
+
+    version_file = ROOT / "version.txt"
+    version = version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "dev"
+    SITE["version"] = version
+
+    for tpl_path in sorted(PAGES_DIR.glob("*.md.tpl")):
+        raw = tpl_path.read_text(encoding="utf-8").replace("__VERSION__", version)
+        md_path = tpl_path.with_suffix("")  # index.md.tpl -> index.md, for slug/stem purposes
+        pages.append(parse_page(raw, md_path))
+
+    return pages
 
 
 # --------------------------------------------------------------------------
