@@ -50,6 +50,7 @@ Například díky makrům pro akordové značky jsem mohl přejít ze značení 
 - Zpěvník se jmenuje podle písničky *Ještě mi chvilku zpívej* od Vlasty Redla.
 - Verze zpěvníku odpovídá počtu písniček. Tedy například verze 8.01 znamená, že ve zpěvníku je 701 písniček.
 - Titulní obrázek namalovala moje spolužačka z vysoké. Byl inspirován zpěvníkem Koinonia a jsou na něm zobrazeni lidé, kterým je zpěvník věnován.
+- Nahrání nové verze zpěvníku na web probíhá automaticky: stačí přidat písničku a pushnout do repozitáře zpěvníku, o zkompilování PDF a aktualizaci webu se postará GitHub Actions.
 
   </div>
 </details>
