@@ -1,6 +1,6 @@
 <!-- index.md AUTO-GENERATED from index.md.tpl — edit that file instead -->
 <div class="download-group">
-  <p class="version-tag">aktuální verze zpěvníku: <span class="version-number">__VERSION__</span></p>
+  <p class="version-tag">aktuální verze zpěvníku: <span class="version-number">__VERSION__</span> &middot; <a href="https://github.com/f-hluchnik/zpevnik/releases/">Jaké písničky přibyly?</a></p>
   <a href="/static/files/zpevnik_last.pdf" class="btn btn-primary" download="zpevnik-__VERSION__.pdf">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     stáhnout zpěvník
@@ -14,8 +14,6 @@
     </a>
   </div>
 </div>
-
-__RECENT_SONGS__
 
 <details class="accordion" markdown="1">
   <summary>Příběh</summary>
