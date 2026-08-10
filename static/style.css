@@ -232,6 +232,55 @@ summary:focus-visible {
   font-weight: 600;
 }
 
+/* "Naposledy přidané" list: same quiet caption treatment as .version-tag
+   (muted, small, monospace) rather than a bordered card -- it's meant to
+   sit in the page, not announce itself. The fade still works without a
+   background box: mask-image fades the element's own content to
+   transparent, which blends into --bg either way. */
+.recent-songs-section {
+  margin: 1.5rem 0 2rem;
+}
+
+.recent-songs-label {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.recent-songs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+
+  max-height: 9rem; /* roughly five rows at this size */
+  overflow-y: auto;
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+          mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.recent-songs:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.recent-song {
+  padding: 0.25rem 0;
+}
+
+/* Themed scrollbar; Safari ignores this and falls back to native. */
+.recent-songs::-webkit-scrollbar { width: 4px; }
+.recent-songs::-webkit-scrollbar-track { background: transparent; }
+.recent-songs::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 2px;
+}
+
 /* Buttons are links, but they are not styled like links: the rule above
    excludes them, so nothing here needs extra specificity or !important. */
 .btn {

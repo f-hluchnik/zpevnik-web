@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import shutil
 import sys
+import json
+from html import escape
 from datetime import date
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -67,6 +69,9 @@ MARKDOWN_CONFIG = {
         }
     },
 }
+
+RECENT_SONGS_FILE = ROOT / "content" / "recent_songs.txt"
+RECENT_SONGS_LIMIT = 100
 
 SITE = {
     "lang": "cs",
@@ -111,6 +116,67 @@ def render_markdown(body: str) -> str:
     )
 
 
+# def render_recent_songs_html() -> str:
+#     """The 'naposledy přidané' list on the front page, as a raw HTML
+#     fragment substituted into index.md.tpl -- same mechanism as
+#     __VERSION__. One song title per line, maintained by hand in the
+#     songbook repo's recent_songs.txt and mirrored here at build time.
+#     Oldest entries at the TOP of the file, newest appended at the
+#     BOTTOM -- so displaying newest-first means reading from the end and
+#     reversing. Empty string if the file doesn't exist or has nothing in
+#     it."""
+#     if not RECENT_SONGS_FILE.exists():
+#         return ""
+#     lines = [
+#         line.strip()
+#         for line in RECENT_SONGS_FILE.read_text(encoding="utf-8").splitlines()
+#         if line.strip()
+#     ]
+#     titles = list(reversed(lines[-RECENT_SONGS_LIMIT:]))
+#     if not titles:
+#         return ""
+
+#     items = "\n".join(f'    <li class="recent-song">{escape(title)}</li>' for title in titles)
+#     return (
+#         '<section class="recent-songs-section">\n'
+#         '  <h2 class="recent-songs-heading">Jaké písničky byly naposledy přidány?</h2>\n'
+#         '  <ul class="recent-songs" tabindex="0" role="region" '
+#         'aria-label="Naposledy přidané písničky">\n'
+#         f'{items}\n'
+#         '  </ul>\n'
+#         '</section>'
+#     )
+def render_recent_songs_html() -> str:
+    """The 'naposledy přidané' list on the front page, as a raw HTML
+    fragment substituted into index.md.tpl -- same mechanism as
+    __VERSION__. Styled to match .version-tag: a quiet caption, not a
+    card. One song title per line, maintained by hand in the songbook
+    repo's recent_songs.txt and mirrored here at build time. Oldest
+    entries at the TOP of the file, newest appended at the BOTTOM -- so
+    displaying newest-first means reading from the end and reversing."""
+    if not RECENT_SONGS_FILE.exists():
+        return ""
+    lines = [
+        line.strip()
+        for line in RECENT_SONGS_FILE.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    titles = list(reversed(lines[-RECENT_SONGS_LIMIT:]))
+    if not titles:
+        return ""
+
+    items = "\n".join(f'    <li class="recent-song">{escape(title)}</li>' for title in titles)
+    return (
+        '<section class="recent-songs-section">\n'
+        '  <p class="recent-songs-label">naposledy přidané písničky</p>\n'
+        '  <ul class="recent-songs" tabindex="0" role="region" '
+        'aria-label="Naposledy přidané písničky">\n'
+        f'{items}\n'
+        '  </ul>\n'
+        '</section>'
+    )
+
+
 def parse_page(raw: str, path: Path) -> dict:
     """One page's raw source -> a page dict.
 
@@ -151,6 +217,7 @@ def load_pages() -> list[dict]:
 
     for tpl_path in sorted(PAGES_DIR.glob("*.md.tpl")):
         raw = tpl_path.read_text(encoding="utf-8").replace("__VERSION__", version)
+        raw = raw.replace("__RECENT_SONGS__", render_recent_songs_html())
         md_path = tpl_path.with_suffix("")  # index.md.tpl -> index.md, for slug/stem purposes
         pages.append(parse_page(raw, md_path))
 

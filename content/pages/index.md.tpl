@@ -15,6 +15,8 @@
   </div>
 </div>
 
+__RECENT_SONGS__
+
 <details class="accordion" markdown="1">
   <summary>Příběh</summary>
   <div class="accordion-content" markdown="1">
