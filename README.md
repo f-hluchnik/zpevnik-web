@@ -8,8 +8,8 @@ and writes plain HTML into `dist/`.
 Sibling repo: [blog](https://f.hluchnikovi.cz) — a separate, standalone site
 with its own look, but the same layout, the same `build.py` structure, and the
 same section order in its stylesheet. Read one and you can read the other.
-Nothing is shared at build time; the two link to each other only by ordinary
-hyperlinks (this site's footer, and the blog's "Projekty" page).
+Nothing is shared at build time; the blog links to this site from its
+"Projekty" page.
 
 ## Layout
 

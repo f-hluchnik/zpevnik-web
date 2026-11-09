@@ -38,7 +38,10 @@
     </main>
 
     <footer class="site-footer">
-      <p>&copy; {{ current_year }} &middot; <a class="footer-link" href="{{ site.blog_url }}">{{ site.blog_title }}</a></p>
+      <p>&copy; 2019–{{ current_year }} František Hluchník</p>
+      {# Same text as the songbook's colophon (zpevnik: preamble/upozorneni.tex): change both together. #}
+      <p class="legal-notice">Zpěvník je nekomerční a šíří se zdarma. Autorská práva k textům a hudbě písní patří jejich autorům. Pokud jste držitelem práv a nepřejete si, aby zde vaše píseň byla, napište na <a class="footer-link" href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a> a píseň odstraním.</p>
+      <p class="legal-notice" lang="en">This songbook is non-commercial and free of charge. The copyright in the lyrics and music of the songs belongs to their authors. If you hold the rights to a song and do not want it here, write to <a class="footer-link" href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a> and I will remove it.</p>
     </footer>
   </div>
 <!-- Cloudflare Web Analytics -->
