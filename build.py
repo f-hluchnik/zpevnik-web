@@ -75,8 +75,7 @@ SITE = {
     "title": "Ještě mi chvilku zpívej",
     "description": "Zpěvník, který píšu v LaTeXu od roku 2019.",
     "url": "https://zpevnik.hluchnikovi.cz",
-    "blog_url": "https://f.hluchnikovi.cz/",
-    "blog_title": "Komorebi",
+    "contact_email": "frantahluchnik@gmail.com",  # removal requests (the legal notice in the footer)
 }
 
 env = Environment(
