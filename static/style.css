@@ -348,6 +348,12 @@ details.accordion[open] summary {
 
 .footer-link:hover { color: var(--accent); }
 
+/* The legal notice: long sentences, so a readable measure instead of the full width. */
+.legal-notice {
+  max-width: 40rem;
+  margin: 0.5rem auto;
+}
+
 /* 8. Preferences --------------------------------------------------------- */
 
 @media (max-width: 480px) {
