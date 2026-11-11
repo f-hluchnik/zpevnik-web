@@ -17,7 +17,8 @@ Nothing is shared at build time; the blog links to this site from its
 content/pages/*.md   one file per page   (index.md is the front page)
 templates/*.html     one file per shape  (see below)
 static/              CSS, JS, icons — copied to dist/static/ as-is
-static/files/        the songbook PDFs
+static/files/        the koledy songbook (the other PDFs are downloaded, see below)
+version.txt          the songbook release this build publishes (written by its CI)
 build.py             reads all of the above, writes dist/
 dist/                the entire website; gitignored, rebuilt every run
 ```
@@ -56,11 +57,35 @@ There is no navigation bar: with one page there is nothing to navigate. A
 second page will build and be reachable at its URL, but you have to link to it
 yourself from the front page.
 
-## Updating the PDFs
+## The songbook PDFs
 
-Replace the files in `static/files/`, keeping the names (`zpevnik_last.pdf`,
-`zpevnik_lidovky.pdf`, `zpevnik_koledy.pdf`). The download buttons on the front
-page point at those paths and need no change.
+The PDFs are not stored here. The songbook repository
+([zpevnik](https://github.com/f-hluchnik/zpevnik)) attaches the PDF of every
+edition to each release as `zpevnik-<edition>-<version>.pdf`, and after the
+release it writes the version to `version.txt` here. Every `build.py` run
+downloads the PDFs of the release `v<version.txt>` into `dist/static/files/`;
+that push to `main` is also what updates the live site. Nobody updates a PDF
+by hand.
+
+Which editions the front page shows is the list `EDITION_DOWNLOADS` in
+`build.py`:
+
+| field | meaning |
+|---|---|
+| `edition` | the folder name in the songbook's `editions/` (it names the release asset) |
+| `label` | the button text |
+| `served_as` | the file name under `/static/files/` |
+
+The first entry is the main button, the others are secondary buttons next to
+the koledy one. **`zpevnik_last.pdf` is a fixed URL** (printed QR codes point
+to it), so the full book keeps that name whatever its button looks like.
+To show a new edition, add one line; when `zpevnik-lite` exists, make it the
+first entry and give the full book a secondary label.
+
+The build fails, and the previous `dist/` stays, if `version.txt` is missing or
+a release asset cannot be downloaded or is not a PDF. The koledy songbook is
+not an edition of the songbook: it is a plain file in `static/files/`, replaced
+by hand, keeping its name.
 
 ## Previewing locally
 
@@ -71,7 +96,8 @@ python build.py --serve
 ```
 
 Open <http://localhost:8000>. Re-run after any edit — there is no auto-reload,
-which is one less moving part to maintain.
+which is one less moving part to maintain. Each run downloads the PDFs (about
+6.5 MB) from GitHub, so it needs a network connection.
 
 ## Editing the design
 
