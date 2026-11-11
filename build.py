@@ -11,9 +11,11 @@ Two kinds of thing:
 
 `build()` reads the content and writes plain HTML into `dist/`. That directory
 is the entire website; it is gitignored and rebuilt from scratch every run.
+The songbook PDFs are not in this repository: every build downloads them from
+the release of the songbook repo named in `version.txt` (see EDITION_DOWNLOADS).
 
-Fully standalone: nothing is fetched from the blog repo at build time, and the
-two sites look deliberately different. They are linked only by ordinary
+Standalone from the blog: nothing is fetched from the blog repo at build time,
+and the two sites look deliberately different. They are linked only by ordinary
 hyperlinks -- this site's footer, and the blog's "Projekty" page. What they do
 share is the shape of this file: it is a subset of the blog's build.py, with
 the same names in the same order.
@@ -28,6 +30,9 @@ from __future__ import annotations
 import shutil
 import sys
 import json
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
 from html import escape
 from datetime import date
 from functools import partial
@@ -51,6 +56,14 @@ OUTPUT_DIR = ROOT / "dist"
 
 SERVE_ADDRESS = ("localhost", 8000)
 
+VERSION_FILE = ROOT / "version.txt"  # written by the songbook repo's CI after each release
+
+# Where the PDFs come from: the release `v<version.txt>` of the songbook repo.
+SONGBOOK_RELEASE_URL = "https://github.com/f-hluchnik/zpevnik/releases/download/v{version}/{asset}"
+DOWNLOAD_TIMEOUT_SECONDS = 60
+PDF_MAGIC = b"%PDF-"
+FILES_URL_PATH = "/static/files/"  # where the PDFs are served; static/files/ holds the koledy book
+
 # `extra` is a bundle. The part that matters here is md_in_html, which lets the
 # raw <details markdown="1"> accordions in index.md still render as Markdown;
 # drop it and that content comes out as literal text. `footnotes` is named
@@ -69,6 +82,31 @@ MARKDOWN_CONFIG = {
         }
     },
 }
+
+
+@dataclass(frozen=True)
+class EditionDownload:
+    """One edition of the songbook offered on the front page."""
+
+    edition: str  # the folder name in editions/ of the songbook repo
+    label: str  # the button text
+    served_as: str  # the file name under /static/files/
+
+    def asset_name(self, version: str) -> str:
+        """The name the songbook CI gives the PDF in the release."""
+        return f"zpevnik-{self.edition}-{version}.pdf"
+
+
+# The first entry is the main button, the others are secondary buttons, in this
+# order. Which editions exist is decided by the songbook repo (every folder of
+# editions/ is released); which of them this page shows is decided here.
+# `zpevnik_last.pdf` is a fixed URL that printed QR codes point to: never rename it.
+# When `zpevnik-lite` exists, add it as the first entry and give the full book a
+# secondary label.
+EDITION_DOWNLOADS = (
+    EditionDownload("full", "stáhnout zpěvník", "zpevnik_last.pdf"),
+    EditionDownload("lidovky", "zpěvník lidových písniček", "zpevnik_lidovky.pdf"),
+)
 
 SITE = {
     "lang": "cs",
@@ -132,30 +170,82 @@ def parse_page(raw: str, path: Path) -> dict:
     }
 
 
-def load_pages() -> list[dict]:
+def read_version() -> str:
+    """The songbook version whose release this build publishes."""
+    if not VERSION_FILE.exists():
+        sys.exit(f"{VERSION_FILE.name} is missing: it names the songbook release to download.")
+    return VERSION_FILE.read_text(encoding="utf-8").strip()
+
+
+def download_links(version: str) -> list[dict]:
+    """The front page's download buttons, main one first."""
+    return [
+        {
+            "label": download.label,
+            "href": FILES_URL_PATH + download.served_as,
+            "filename": download.asset_name(version),
+        }
+        for download in EDITION_DOWNLOADS
+    ]
+
+
+def load_pages(version: str) -> list[dict]:
     """Load every page in content/pages/.
 
     A page is either a plain `*.md` file, or a `*.md.tpl` template rendered
-    in-memory (currently just a __VERSION__ substitution, read from
-    version.txt at the repo root -- written by the songbook repo's CI
-    whenever it publishes a new PDF). Templates are never written back to
-    disk, so a local `python build.py` run leaves the working tree untouched.
+    in-memory: __VERSION__ becomes the songbook version and __DOWNLOADS__ the
+    edition download buttons. Templates are never written back to disk, so a
+    local `python build.py` run leaves the working tree untouched.
     """
     pages = [
         parse_page(path.read_text(encoding="utf-8"), path)
         for path in sorted(PAGES_DIR.glob("*.md"))
     ]
 
-    version_file = ROOT / "version.txt"
-    version = version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "dev"
     SITE["version"] = version
+    placeholders = {
+        "__VERSION__": version,
+        "__DOWNLOADS__": env.get_template("_downloads.html").render(
+            downloads=download_links(version)
+        ),
+    }
 
     for tpl_path in sorted(PAGES_DIR.glob("*.md.tpl")):
-        raw = tpl_path.read_text(encoding="utf-8").replace("__VERSION__", version)
+        raw = tpl_path.read_text(encoding="utf-8")
+        for placeholder, value in placeholders.items():
+            raw = raw.replace(placeholder, value)
         md_path = tpl_path.with_suffix("")  # index.md.tpl -> index.md, for slug/stem purposes
         pages.append(parse_page(raw, md_path))
 
     return pages
+
+
+# --------------------------------------------------------------------------
+# Release assets
+# --------------------------------------------------------------------------
+
+
+def fetch_pdf(url: str) -> bytes:
+    """Download one PDF, failing loudly: a site without its PDFs must not go live."""
+    try:
+        with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
+            content = response.read()
+    except (urllib.error.URLError, TimeoutError) as error:
+        sys.exit(f"Cannot download {url}: {error}\n"
+                 "Does the songbook release named in version.txt exist and carry this file?")
+    if not content.startswith(PDF_MAGIC):
+        sys.exit(f"{url} is not a PDF.")
+    return content
+
+
+def fetch_edition_pdfs(version: str) -> dict[str, bytes]:
+    """The PDF of every configured edition from the release, by served file name."""
+    return {
+        download.served_as: fetch_pdf(
+            SONGBOOK_RELEASE_URL.format(version=version, asset=download.asset_name(version))
+        )
+        for download in EDITION_DOWNLOADS
+    }
 
 
 # --------------------------------------------------------------------------
@@ -174,9 +264,12 @@ def render(template_name: str, out_path: Path, **context) -> None:
 
 
 def build() -> None:
-    # Parse before deleting dist/, so a broken page leaves the previous build
-    # in place instead of an empty directory.
-    pages = load_pages()
+    # Parse and download before deleting dist/, so a broken page or an
+    # unreachable release leaves the previous build in place instead of an
+    # empty directory.
+    version = read_version()
+    pages = load_pages(version)
+    edition_pdfs = fetch_edition_pdfs(version)
 
     if OUTPUT_DIR.exists():
         shutil.rmtree(OUTPUT_DIR)
@@ -191,11 +284,16 @@ def build() -> None:
     if STATIC_DIR.exists():
         shutil.copytree(STATIC_DIR, OUTPUT_DIR / "static")
 
+    files_dir = OUTPUT_DIR / FILES_URL_PATH.strip("/")
+    files_dir.mkdir(parents=True, exist_ok=True)
+    for served_as, content in edition_pdfs.items():
+        (files_dir / served_as).write_bytes(content)
+
     # Derived from SITE["url"], so the domain is configured in one place
     # instead of also being hardcoded in the deploy workflow.
     (OUTPUT_DIR / "CNAME").write_text(urlparse(SITE["url"]).netloc + "\n", encoding="utf-8")
 
-    print(f"Built {len(pages)} page(s) -> dist/")
+    print(f"Built {len(pages)} page(s) and {len(edition_pdfs)} PDF(s) of v{version} -> dist/")
 
 
 def serve() -> None:
