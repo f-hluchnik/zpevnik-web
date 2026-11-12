@@ -96,7 +96,7 @@ summary:focus-visible {
 .site-header {
   position: relative;
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 1.75rem;
 }
 
 .site-header-content { padding: 0 2.5rem; }
@@ -115,6 +115,32 @@ summary:focus-visible {
   color: var(--muted);
   font-size: 1rem;
 }
+
+/* The two parts of the site, as a segmented control under the header. The
+   selected half is filled with the ink colour, so it does not look like the
+   accent-coloured download button. */
+.site-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 24rem;
+  margin: 0 auto 2.25rem;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.site-nav a {
+  padding: 0.55rem 0.8rem;
+  color: var(--ink);
+  text-align: center;
+  text-decoration: none;
+}
+
+.site-nav a + a { border-left: 1px solid var(--muted); }
+.site-nav a:hover { background-color: var(--code-bg); }
+.site-nav a[aria-current] { background-color: var(--ink); color: var(--bg); }
 
 /* Theme toggle. Markup is templates/_theme-toggle.html, shared verbatim with
    the blog; only the placement differs. Hidden unless theme.js ran, because

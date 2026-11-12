@@ -1,0 +1,7 @@
+{# The two parts of the site, on every page: the download page and the online
+   songbook (D-103). `site_section` marks the one the reader is in; the 404 page
+   is in neither. Links to pages, so not ARIA tabs, but they look like tabs. #}
+<nav class="site-nav" aria-label="Části webu">
+  <a href="/"{% if site_section == "download" %} aria-current="page"{% endif %}>Stáhnout</a>
+  <a href="{{ site.songbook_path }}"{% if site_section == "songbook" %} aria-current="true"{% endif %}>Zobrazit online</a>
+</nav>

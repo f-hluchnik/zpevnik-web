@@ -48,8 +48,8 @@
 
 /* The font size buttons; the control itself is hidden until songbook.js shows it. */
 .font-size-control button {
-  min-width: 2.6rem;
-  padding: 0.2rem 0.6rem;
+  min-width: 2rem;
+  padding: 0.1rem 0.45rem;
   border: 1px solid var(--muted);
   border-radius: 0.4rem;
   background: none;
@@ -262,6 +262,7 @@
   align-items: center;
   gap: 0.6rem 1.2rem;
   margin-top: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .song-pdf { color: var(--muted); }
