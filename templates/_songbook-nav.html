@@ -1,0 +1,7 @@
+{# The navigation of the online songbook. `nav_section` is "contents" (the index
+   and the songs) or "artists"; the page the reader is in is marked. #}
+<nav class="songbook-nav" aria-label="Zpěvník">
+  <a href="{{ site.songbook_path }}"{% if nav_section == "contents" %} aria-current="true"{% endif %}>Písničky</a>
+  <a href="{{ site.artists_path }}"{% if nav_section == "artists" %} aria-current="true"{% endif %}>Interpreti</a>
+  <a href="/">Ke stažení</a>
+</nav>

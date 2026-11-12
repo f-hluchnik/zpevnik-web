@@ -6,8 +6,9 @@ Two kinds of thing:
   * content   -- Markdown you write, in `content/pages/`. One file per page;
                  `index.md` becomes the front page.
   * templates -- Jinja2 HTML in `templates/`, one per *shape*: `page.html` for
-                 an authored page, `song.html` for a song of the online
-                 songbook, which is built from `songs.json`, not from Markdown.
+                 an authored page; the online songbook is built from
+                 `songs.json`, not from Markdown, with `contents.html`,
+                 `artists.html`, `artist.html` and `song.html`.
 
 `build()` reads the content and writes plain HTML into `dist/`. That directory
 is the entire website; it is gitignored and rebuilt from scratch every run.
@@ -50,7 +51,15 @@ import markdown
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from songbook import check_scores_present, check_see_links, is_chord_only_line, read_score_images
+from songbook import (
+    artist_references,
+    book_neighbours,
+    check_free_ids,
+    check_scores_present,
+    check_see_links,
+    is_chord_only_line,
+    read_score_images,
+)
 
 # --------------------------------------------------------------------------
 # Configuration
@@ -80,8 +89,12 @@ SUPPORTED_SCHEMA_VERSION = 1
 SCORES_ASSET = "scores.zip"  # the score images (SVG) the songs show
 SCORES_URL_PATH = "/static/scores/"  # where they are served
 
-# Where the online songbook is served (D-167): song pages at <path><id>/.
+# Where the online songbook is served (D-167): the index at <path>, a song at
+# <path><id>/, the list of artists at <path>interpret/ and an artist or a
+# collection at <path>interpret/<slug>/ (D-103, D-168).
 SONGBOOK_URL_PATH = "/zpivej/"
+ARTISTS_DIRECTORY = "interpret"
+ARTISTS_URL_PATH = f"{SONGBOOK_URL_PATH}{ARTISTS_DIRECTORY}/"
 
 # `extra` is a bundle. The part that matters here is md_in_html, which lets the
 # raw <details markdown="1"> accordions in index.md still render as Markdown;
@@ -127,12 +140,18 @@ EDITION_DOWNLOADS = (
     EditionDownload("lidovky", "zpěvník lidových písniček", "zpevnik_lidovky.pdf"),
 )
 
+# "Open in PDF" on a song opens the full book, the first edition above, at the
+# song's page (`page` in songs.json is the PDF page index, D-165).
+SONGBOOK_PDF_URL = FILES_URL_PATH + EDITION_DOWNLOADS[0].served_as
+
 SITE = {
     "lang": "cs",
     "title": "Ještě mi chvilku zpívej",
     "description": "Zpěvník, který píšu v LaTeXu od roku 2019.",
     "url": "https://zpevnik.hluchnikovi.cz",
     "songbook_path": SONGBOOK_URL_PATH,
+    "artists_path": ARTISTS_URL_PATH,
+    "pdf_path": SONGBOOK_PDF_URL,
     "scores_path": SCORES_URL_PATH,
     "contact_email": "frantahluchnik@gmail.com",  # removal requests (the legal notice in the footer)
 }
@@ -148,6 +167,7 @@ env = Environment(
     lstrip_blocks=True,
 )
 env.tests["chord_only"] = is_chord_only_line
+env.filters["artist_references"] = artist_references
 
 
 # --------------------------------------------------------------------------
@@ -228,7 +248,7 @@ def load_pages(version: str) -> list[dict]:
     placeholders = {
         "__VERSION__": version,
         "__DOWNLOADS__": env.get_template("_downloads.html").render(
-            downloads=download_links(version)
+            downloads=download_links(version), songbook_path=SONGBOOK_URL_PATH
         ),
     }
 
@@ -331,12 +351,28 @@ def render(template_name: str, out_path: Path, **context) -> None:
     )
 
 
-def render_songs(document: dict) -> None:
-    """One page per song, at <SONGBOOK_URL_PATH><id>/."""
+def render_songbook(document: dict) -> None:
+    """The online songbook: the index, the artists, and a page per song."""
+    songs = document["songs"]
+    songs_by_id = {song["id"]: song for song in songs}
     artists = {artist["slug"]: artist for artist in document["artists"]}
     songbook_dir = OUTPUT_DIR / SONGBOOK_URL_PATH.strip("/")
-    for song in document["songs"]:
-        render("song.html", songbook_dir / song["id"] / "index.html", song=song, artists=artists)
+    artists_dir = songbook_dir / ARTISTS_DIRECTORY
+
+    render("contents.html", songbook_dir / "index.html", sections=document["contents"],
+           songs=songs_by_id, nav_section="contents")
+
+    # An artist without a section has no page, as in the book; the songs name them in plain text.
+    artists_with_page = [artist for artist in document["artists"] if artist["section"]]
+    render("artists.html", artists_dir / "index.html", artists_with_page=artists_with_page,
+           nav_section="artists")
+    for artist in artists_with_page:
+        render("artist.html", artists_dir / artist["slug"] / "index.html", artist=artist,
+               songs=songs_by_id, nav_section="artists")
+
+    for previous_song, song, next_song in book_neighbours(songs):
+        render("song.html", songbook_dir / song["id"] / "index.html", song=song, artists=artists,
+               previous_song=previous_song, next_song=next_song, nav_section="contents")
 
 
 def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> None:
@@ -349,6 +385,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     document = load_songs_document(version, songs_json)
     songs = document["songs"]
     check_see_links(songs)
+    check_free_ids(songs, reserved=[ARTISTS_DIRECTORY])
     score_images = load_score_images(version, scores_zip, songs)
 
     if OUTPUT_DIR.exists():
@@ -358,7 +395,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     for page in pages:
         render("page.html", OUTPUT_DIR / page["output_path"], page=page)
 
-    render_songs(document)
+    render_songbook(document)
 
     # GitHub Pages serves /404.html for any path it cannot match.
     render("404.html", OUTPUT_DIR / "404.html")

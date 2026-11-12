@@ -1,0 +1,15 @@
+{# The songs of one artist or collection, at <artists_path><slug>/. A person is
+   named as in the song's link ("Johnny Cash"; the list has "Cash, Johnny" to be
+   found by the surname), a collection by what it holds. #}
+{% extends "songbook_base.html" %}
+{% from "_entries.html" import entry_list with context %}
+
+{% set heading = artist.label if artist.kind == "artist" else artist.name %}
+
+{% block title %}{{ heading }} — {{ site.title }}{% endblock %}
+
+{% block songbook_content %}
+<h1 class="page-title">{{ heading }}</h1>
+{{ entry_list(artist.entries, songs) }}
+<p class="back-link"><a href="{{ site.artists_path }}">&larr; Všichni interpreti</a></p>
+{% endblock %}

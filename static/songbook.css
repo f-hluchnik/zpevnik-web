@@ -1,6 +1,6 @@
 /* ==========================================================================
-   The online songbook (song pages). Loaded after style.css, only by the pages
-   of the songbook, and built on its tokens.
+   The online songbook (index, artists, song pages). Loaded after style.css,
+   only by the pages of the songbook, and built on its tokens.
 
    The chord rule is the songbook's (D-123, zpevnik.sty):
      * a chord and its text take max(text width, chord width + --chord-sep);
@@ -9,7 +9,7 @@
      * a gap that splits a word holds a hyphen, when it is wide enough.
    The CSS needs no JavaScript for any of it.
      1. Tokens   2. Page   3. Lines and chords   4. Blocks   5. Rest of a song
-     6. Dark mode   7. Narrow screens
+     6. Navigation and lists   7. Dark mode   8. Narrow screens
    ========================================================================== */
 
 /* 1. Tokens ------------------------------------------------------------- */
@@ -46,8 +46,7 @@
   line-height: 1.35;
 }
 
-/* Hidden until songbook.js shows it. */
-.font-size-control { margin-top: 0.8rem; }
+/* The font size buttons; the control itself is hidden until songbook.js shows it. */
 .font-size-control button {
   min-width: 2.6rem;
   padding: 0.2rem 0.6rem;
@@ -205,7 +204,86 @@
 .song-see { margin: 2rem 0 0; color: var(--muted); }
 .song-see a { color: var(--accent); }
 
-/* 6. Dark mode ----------------------------------------------------------- */
+/* 6. Navigation and lists ------------------------------------------------ */
+
+.songbook-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  margin: 0 0 1.5rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.songbook-nav a { color: var(--muted); text-decoration: none; }
+.songbook-nav a:hover { color: var(--accent); }
+.songbook-nav a[aria-current] { color: var(--ink); border-bottom: 2px solid var(--accent); }
+
+/* The letters of the index, one tap away from their section. */
+.letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.3rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.letters a {
+  min-width: 2.2rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  color: var(--ink);
+  text-align: center;
+  text-decoration: none;
+}
+
+.letters a:hover { border-color: var(--accent); color: var(--accent); }
+
+.letter-section h2 { margin: 1.6rem 0 0.4rem; scroll-margin-top: 1rem; }
+
+/* The entries run in columns as wide as a title usually is. */
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 16rem;
+  column-gap: 2rem;
+}
+
+.entries li { break-inside: avoid; padding: 0.15rem 0; }
+.entries a { color: var(--ink); text-decoration: none; }
+.entries a:hover { color: var(--accent); }
+
+/* The font size and the PDF, under the title. */
+.song-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  margin-top: 0.8rem;
+}
+
+.song-pdf { color: var(--muted); }
+.song-pdf:hover { color: var(--accent); }
+.song-artists a { color: inherit; }
+.song-artists a:hover { color: var(--accent); }
+
+/* The song before and the one after it in the book, below the song. */
+.song-neighbours {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.song-neighbours a { color: var(--accent); text-decoration: none; }
+.song-neighbours a:hover { text-decoration: underline; }
+.song-neighbours .next { margin-left: auto; text-align: right; }
+
+/* 7. Dark mode ----------------------------------------------------------- */
 
 /* The scores are black on transparent: turn them over, and back again so that
    their red chord symbols stay red. */
@@ -215,7 +293,7 @@
   html:not([data-theme="light"]) .score { filter: invert(1) hue-rotate(180deg); }
 }
 
-/* 7. Narrow screens ------------------------------------------------------ */
+/* 8. Narrow screens ------------------------------------------------------ */
 
 @media (max-width: 48rem) {
   .columns-2 { column-count: 1; }

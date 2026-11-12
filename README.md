@@ -33,13 +33,13 @@ Two kinds of thing, and the templates follow directly from them:
 | | |
 |---|---|
 | **Content** you author | `content/pages/` |
-| **Templates**, one per shape | authored page: `page.html`; song: `song.html` |
+| **Templates**, one per shape | authored page: `page.html`; songbook: `contents.html`, `artists.html`, `artist.html`, `song.html` (all on `songbook_base.html`) |
 
 The songs are a third kind of thing: data from the release (`songs.json`, see
 below), not content you author. The blog has posts, tags and archives; this
 site has the front page and the songbook. Partials start with an underscore
-(`_theme-toggle.html`, `_song.html`) and are `include`d or imported, not
-extended.
+(`_theme-toggle.html`, `_song.html`, `_entries.html`, `_songbook-nav.html`) and
+are `include`d or imported, not extended.
 
 ## Adding a page
 
@@ -121,12 +121,31 @@ python build.py --songs-json ../zpevnik/build/songs.json --scores-zip FILE
 
 ## The online songbook
 
-The songbook lives under `/zpivej/` (`SONGBOOK_URL_PATH` in `build.py`, D-167):
-one page per song, at `/zpivej/<id>/`, from `templates/song.html` and the
-macros in `templates/_song.html`, which follow the shape of `songs.json`. Its
-own stylesheet (`static/songbook.css`) is loaded by the song pages only. Every
-page carries `<meta name="robots" content="noindex">`. The download page does
-not link to the songbook yet: the link comes with the index (W3).
+The songbook lives under `/zpivej/` (`SONGBOOK_URL_PATH` in `build.py`, D-167).
+Every page of it extends `templates/songbook_base.html`: its own stylesheet
+(`static/songbook.css`), `<meta name="robots" content="noindex">` and its
+navigation (Písničky · Interpreti · Ke stažení). The pages:
+
+| URL | what | template |
+|---|---|---|
+| `/zpivej/` | the index: every song and every alternative title, by letter | `contents.html` |
+| `/zpivej/<id>/` | one song | `song.html`, with the macros of `_song.html` that follow the shape of `songs.json` |
+| `/zpivej/interpret/` | the artists and collections | `artists.html` |
+| `/zpivej/interpret/<slug>/` | the songs of one artist or collection | `artist.html` |
+
+**The order is the data's.** The index is the `contents` of `songs.json` and an
+artist's songs are its `entries`, as the book prints them (Czech collation,
+D-107); the build never sorts. An alternative title is shown as in the book:
+*the other title* (the song's own). The previous and next song on a song page
+are the neighbours in `songs` (book order). A song id may not be `interpret`
+(the build stops), and an artist whose registry entry has no section (`section`
+is false) has no page and is named in plain text.
+
+A song page links its artists and collections, and "otevřít v PDF" opens the
+full book (`zpevnik_last.pdf`) at the song's `page`, which is the PDF page
+index (D-165). `#page=N` is the usual open parameter of browser PDF viewers;
+it has not been tried on a phone, whose viewer may ignore it. The download page
+links to the index, and `404.html` does too.
 
 **The chord rule** (D-123) is in `songbook.css`, and needs no JavaScript. A
 chord and its text are an inline-block, as wide as the wider of the text and

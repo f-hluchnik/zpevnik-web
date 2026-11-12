@@ -1,0 +1,10 @@
+{# A list of entries of the contents or of an artist (songs.json): the title of a
+   song, or one of its other titles, which the book sets in italics with the
+   song's own title after it. The order is the data's, as in the PDF. #}
+{% macro entry_list(entries, songs) -%}
+<ul class="entries">
+{% for entry in entries %}
+  <li><a href="{{ site.songbook_path }}{{ entry.id }}/">{% if entry.alternative %}<em>{{ entry.title }}</em> ({{ songs[entry.id].tocTitle }}){% else %}{{ entry.title }}{% endif %}</a></li>
+{% endfor %}
+</ul>
+{%- endmacro %}

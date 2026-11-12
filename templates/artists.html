@@ -1,0 +1,14 @@
+{# The artists and collections of the online songbook, at <artists_path>, in the
+   order of the book's artist index. #}
+{% extends "songbook_base.html" %}
+
+{% block title %}Interpreti — {{ site.title }}{% endblock %}
+
+{% block songbook_content %}
+<h1 class="page-title">Interpreti</h1>
+<ul class="entries">
+  {% for artist in artists_with_page %}
+  <li><a href="{{ site.artists_path }}{{ artist.slug }}/">{{ artist.name if artist.kind == "artist" else artist.label }}</a></li>
+  {% endfor %}
+</ul>
+{% endblock %}
