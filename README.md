@@ -166,8 +166,12 @@ artists or lyrics (`jede` finds `jede`, `jeden` and `jedeme`, not `pojedeme`;
 punctuation is a space, so `ain't` is the words `ain` and `t`). The order: the title has all the words, then
 the title and other titles, then with the artists, then a line of the lyrics
 with all the words together, then the words found apart; within each rank the
-songs stay in book order. A hit in the lyrics shows the line; a hit in another
-title shows *též: …*. The query is kept in the address (`?q=`), so the back
+songs stay in book order. The results come in two groups (D-173): *V názvu nebo
+u interpreta* (the first three ranks) and *V textu* (the lyrics), each with its
+number of songs; a song is in the group of its best rank only, and an empty
+group is not shown. A hit in the lyrics shows the line, with the matched words
+in bold; the group of the lyrics shows its first 10 songs, and a button
+*Zobrazit všech N* the rest. A hit in another title shows *též: …*. The query is kept in the address (`?q=`), so the back
 button of the browser returns from a song to the results. Without JavaScript
 the page says so and links to the index and the artists. There is no library;
 the page has been tried in a browser, but there are no automated tests of
