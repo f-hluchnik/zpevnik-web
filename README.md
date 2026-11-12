@@ -124,7 +124,7 @@ python build.py --songs-json ../zpevnik/build/songs.json --scores-zip FILE
 The songbook lives under `/zpivej/` (`SONGBOOK_URL_PATH` in `build.py`, D-167).
 Every page of it extends `templates/songbook_base.html`: its own stylesheet
 (`static/songbook.css`), `<meta name="robots" content="noindex">` and its own
-navigation (Písničky · Interpreti), under the tabs of the site. The pages:
+navigation (Písničky · Interpreti · Hledat), under the tabs of the site. The pages:
 
 | URL | what | template |
 |---|---|---|
@@ -132,13 +132,14 @@ navigation (Písničky · Interpreti), under the tabs of the site. The pages:
 | `/zpivej/<id>/` | one song | `song.html`, with the macros of `_song.html` that follow the shape of `songs.json` |
 | `/zpivej/interpret/` | the artists and collections | `artists.html` |
 | `/zpivej/interpret/<slug>/` | the songs of one artist or collection | `artist.html` |
+| `/zpivej/hledat/` | the search | `search.html`, `static/search.js` |
 
 **The order is the data's.** The index is the `contents` of `songs.json` and an
 artist's songs are its `entries`, as the book prints them (Czech collation,
 D-107); the build never sorts. An alternative title is shown as in the book:
 *the other title* (the song's own). The previous and next song on a song page
-are the neighbours in `songs` (book order). A song id may not be `interpret`
-(the build stops), and an artist whose registry entry has no section (`section`
+are the neighbours in `songs` (book order). A song id may not be `interpret` or
+`hledat` (the build stops), and an artist whose registry entry has no section (`section`
 is false) has no page and is named in plain text.
 
 A song page links its artists and collections, and "otevřít v PDF" opens the
@@ -146,12 +147,31 @@ full book (`zpevnik_last.pdf`) at the song's `page`, which is the PDF page
 index (D-165). `#page=N` is the usual open parameter of browser PDF viewers;
 it has not been tried on a phone, whose viewer may ignore it.
 
+**The search** (D-170) looks through the title, the other titles, the artists
+and the lyrics of every song. `build.py` writes them as
+`static/search-index.json` (one entry per song in book order; `search_entry` in
+`songbook.py`, which joins the text under the chords back into whole lines and
+leaves out chords, labels and notes): about 680 kB, 260 kB gzipped. Only the
+search page fetches it, when its field is first used (it asks for the focus, so
+that is when the page opens), and the script keeps it in memory. `static/search.js` splits the query into words, ignores case and
+diacritics (Unicode NFD, so `ceresne` finds *Čerešně*), and finds a song when
+every word occurs in its title, other titles, artists or lyrics, anywhere in a
+word (`jede` also finds `jeden`). The order: the title has all the words, then
+the title and other titles, then with the artists, then a line of the lyrics
+with all the words together, then the words found apart; within each rank the
+songs stay in book order. A hit in the lyrics shows the line; a hit in another
+title shows *též: …*. The query is kept in the address (`?q=`), so the back
+button of the browser returns from a song to the results. Without JavaScript
+the page says so and links to the index and the artists. There is no library;
+the page has been tried in a browser, but there are no automated tests of
+`search.js`.
+
 **Two levels of navigation.** The tabs *Stáhnout* and *Zobrazit online*
 (`templates/_site-nav.html`, in `base.html`) are on every page of the site and
 mark the part the reader is in (`site_section`: `SECTION_DOWNLOAD`,
 `SECTION_SONGBOOK` in `build.py`; the 404 page marks none). Only under
 `/zpivej/` a second row (`_songbook-nav.html`, `songbook_section`) switches
-between the index and the artists. They are plain links to separate pages, so
+between the index, the artists and the search. They are plain links to separate pages, so
 they work without JavaScript and keep the `noindex` of the songbook to its own
 pages; they look like tabs but are not ARIA tabs. `404.html` links to the
 index as well.

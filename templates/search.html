@@ -1,0 +1,24 @@
+{# The search of the online songbook, at <search_path>. The page does its work in
+   static/search.js, which loads the index (D-170) when the field is first used;
+   without JavaScript it says so and points to the index. #}
+{% extends "songbook_base.html" %}
+
+{% block title %}Hledat — {{ site.title }}{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <script src="/static/search.js" defer></script>
+{% endblock %}
+
+{% block songbook_content %}
+<h1 class="page-title">Hledat</h1>
+<form class="search" role="search" action="{{ site.search_path }}" data-index-url="{{ site.search_index_path }}" data-songbook-path="{{ site.songbook_path }}">
+  <label class="visually-hidden" for="search-query">Název, interpret nebo text písničky</label>
+  <input id="search-query" class="search-field" type="search" name="q" placeholder="název, interpret nebo text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" autofocus>
+</form>
+<p class="search-status" role="status"></p>
+<ol class="search-results"></ol>
+<noscript>
+  <p>Hledání potřebuje JavaScript. Písničky najdete <a href="{{ site.songbook_path }}">v rejstříku</a> a <a href="{{ site.artists_path }}">podle interpretů</a>.</p>
+</noscript>
+{% endblock %}

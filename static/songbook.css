@@ -9,7 +9,7 @@
      * a gap that splits a word holds a hyphen, when it is wide enough.
    The CSS needs no JavaScript for any of it.
      1. Tokens   2. Page   3. Lines and chords   4. Blocks   5. Rest of a song
-     6. Navigation and lists   7. Dark mode   8. Narrow screens
+     6. Navigation, lists and search   7. Dark mode   8. Narrow screens
    ========================================================================== */
 
 /* 1. Tokens ------------------------------------------------------------- */
@@ -204,7 +204,7 @@
 .song-see { margin: 2rem 0 0; color: var(--muted); }
 .song-see a { color: var(--accent); }
 
-/* 6. Navigation and lists ------------------------------------------------ */
+/* 6. Navigation, lists and search ------------------------------------------ */
 
 .songbook-nav {
   display: flex;
@@ -283,6 +283,30 @@
 .song-neighbours a { color: var(--accent); text-decoration: none; }
 .song-neighbours a:hover { text-decoration: underline; }
 .song-neighbours .next { margin-left: auto; text-align: right; }
+
+/* The search: a wide field, and the results as a list of titles with what was found. */
+.search-field {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.search-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.search-status { min-height: 1.6em; margin: 0.8rem 0; color: var(--muted); }
+
+.search-results { margin: 0; padding: 0; list-style: none; }
+.search-results li { padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+.search-results a { color: var(--ink); text-decoration: none; }
+.search-results a:hover .result-title { color: var(--accent); }
+.result-title { font-weight: 500; }
+.result-artists { margin-left: 0.6rem; color: var(--muted); }
+.result-detail { display: block; color: var(--muted); font-size: 0.9rem; }
+.result-line { font-style: italic; }
 
 /* 7. Dark mode ----------------------------------------------------------- */
 

@@ -1,7 +1,7 @@
 """What the online songbook needs from `songs.json` and `scores.zip` besides the
 templates: finding the score images the songs use, checking the links between
-songs, telling lines of chords from lines of lyrics, and the neighbours of a
-song in the book.
+songs, telling lines of chords from lines of lyrics, the neighbours of a song in
+the book, and what the search looks through.
 
 Everything here is a pure function of the data, so it is tested without a build
 (tests/test_songbook.py). The shape of the data is the songbook repository's
@@ -46,6 +46,38 @@ def is_chord_only_line(line: dict) -> bool:
     would leave an empty row under it."""
     segments = [item for item in line["items"] if item["type"] == "segment"]
     return bool(segments) and not any(segment["lyrics"] for segment in segments)
+
+
+def plain_text(parts: list[dict]) -> str:
+    """A text (runs, gaps, footnote marks) as plain words: a pause is a space,
+    a footnote mark is nothing, and any run of spaces is one."""
+    pieces = (
+        part["text"] if part["type"] == "run" else " " if part["type"] == "gap" else ""
+        for part in parts
+    )
+    return " ".join("".join(pieces).split())
+
+
+def lyrics_lines(song: dict) -> list[str]:
+    """The lyrics of a song, a plain line each: the words a singer remembers,
+    without chords, labels or notes. The text under a chord and the text under
+    the next one are joined, so a word the chord stands in is whole again."""
+    lines = (
+        plain_text([part for item in line["items"] if item["type"] == "segment" for part in item["lyrics"]])
+        for line in body_lines(song)
+    )
+    return [line for line in lines if line]
+
+
+def search_entry(song: dict, artists: dict[str, dict]) -> dict:
+    """What the search knows of a song (`artists` by slug, as in the document)."""
+    return {
+        "id": song["id"],
+        "title": song["tocTitle"],
+        "altTitles": song["altTitles"],
+        "artists": [label or artists[slug]["linkLabel"] for slug, label in artist_references(song)],
+        "lyrics": "\n".join(lyrics_lines(song)),
+    }
 
 
 def artist_references(song: dict) -> list[tuple[str, str | None]]:
