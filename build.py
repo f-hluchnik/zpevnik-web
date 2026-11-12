@@ -33,6 +33,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -103,8 +104,11 @@ RESERVED_DIRECTORIES = (ARTISTS_DIRECTORY, SEARCH_DIRECTORY)
 
 # What the search looks through, written at build time and loaded by the search
 # page when it is first used.
-SEARCH_INDEX_FILE = "search-index.json"
-SEARCH_INDEX_URL_PATH = f"/static/{SEARCH_INDEX_FILE}"
+SEARCH_INDEX_URL_PATH = "/static/search-index.json"
+
+# A file of the site is asked for as <path>?v=<this many characters of the hash of its
+# content>, see asset_url().
+CONTENT_VERSION_LENGTH = 8
 
 # The two parts of the site, which the tabs under the header switch between
 # (`site_section` of a page); a page of neither, the 404 page, marks no tab.
@@ -173,7 +177,6 @@ SITE = {
     "songbook_path": SONGBOOK_URL_PATH,
     "artists_path": ARTISTS_URL_PATH,
     "search_path": SEARCH_URL_PATH,
-    "search_index_path": SEARCH_INDEX_URL_PATH,
     "pdf_path": SONGBOOK_PDF_URL,
     "scores_path": SCORES_URL_PATH,
     "contact_email": "frantahluchnik@gmail.com",  # removal requests (the legal notice in the footer)
@@ -191,6 +194,23 @@ env = Environment(
 )
 env.tests["chord_only"] = is_chord_only_line
 env.filters["artist_references"] = artist_references
+
+
+def content_version(content: bytes) -> str:
+    """A short name for this content: it changes when the content does."""
+    return hashlib.sha256(content).hexdigest()[:CONTENT_VERSION_LENGTH]
+
+
+def asset_url(name: str) -> str:
+    """The URL of a style sheet or script of static/, with the version of its content.
+
+    GitHub Pages lets a browser keep a file for ten minutes, so a visitor who has
+    just seen the site could get the new pages with the old style sheet: a new
+    URL with every change of the file makes the browser ask for it again."""
+    return f"/static/{name}?v={content_version((STATIC_DIR / name).read_bytes())}"
+
+
+env.globals["asset_url"] = asset_url
 
 
 # --------------------------------------------------------------------------
@@ -374,8 +394,8 @@ def render(template_name: str, out_path: Path, site_section: str | None = None, 
     )
 
 
-def render_songbook(document: dict) -> None:
-    """The online songbook: the index, the artists, and a page per song."""
+def render_songbook(document: dict, search_index_url: str) -> None:
+    """The online songbook: the index, the artists, the search, and a page per song."""
     songs = document["songs"]
     songs_by_id = {song["id"]: song for song in songs}
     artists = {artist["slug"]: artist for artist in document["artists"]}
@@ -385,7 +405,7 @@ def render_songbook(document: dict) -> None:
     render_page = partial(render, site_section=SECTION_SONGBOOK)
 
     render_page("search.html", songbook_dir / SEARCH_DIRECTORY / "index.html",
-                songbook_section=SEARCH_SECTION)
+                search_index_url=search_index_url, songbook_section=SEARCH_SECTION)
 
     render_page("contents.html", songbook_dir / "index.html", sections=document["contents"],
                 songs=songs_by_id, songbook_section=CONTENTS_SECTION)
@@ -404,13 +424,11 @@ def render_songbook(document: dict) -> None:
                     songbook_section=CONTENTS_SECTION)
 
 
-def write_search_index(document: dict) -> None:
+def search_index_json(document: dict) -> bytes:
     """What the search looks through, one entry per song in book order, as compact JSON."""
     artists = {artist["slug"]: artist for artist in document["artists"]}
     entries = [search_entry(song, artists) for song in document["songs"]]
-    index_file = OUTPUT_DIR / SEARCH_INDEX_URL_PATH.strip("/")
-    index_file.parent.mkdir(parents=True, exist_ok=True)
-    index_file.write_text(json.dumps(entries, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
 def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> None:
@@ -422,6 +440,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     edition_pdfs = fetch_edition_pdfs(version)
     document = load_songs_document(version, songs_json)
     songs = document["songs"]
+    search_index = search_index_json(document)
     check_see_links(songs)
     check_free_ids(songs, reserved=RESERVED_DIRECTORIES)
     score_images = load_score_images(version, scores_zip, songs)
@@ -433,7 +452,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     for page in pages:
         render("page.html", OUTPUT_DIR / page["output_path"], site_section=SECTION_DOWNLOAD, page=page)
 
-    render_songbook(document)
+    render_songbook(document, f"{SEARCH_INDEX_URL_PATH}?v={content_version(search_index)}")
 
     # GitHub Pages serves /404.html for any path it cannot match.
     render("404.html", OUTPUT_DIR / "404.html")
@@ -446,7 +465,9 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     for served_as, content in edition_pdfs.items():
         (files_dir / served_as).write_bytes(content)
 
-    write_search_index(document)
+    search_index_file = OUTPUT_DIR / SEARCH_INDEX_URL_PATH.strip("/")
+    search_index_file.parent.mkdir(parents=True, exist_ok=True)
+    search_index_file.write_bytes(search_index)
 
     scores_dir = OUTPUT_DIR / SCORES_URL_PATH.strip("/")
     scores_dir.mkdir(parents=True)
