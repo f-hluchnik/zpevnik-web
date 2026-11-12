@@ -22,8 +22,9 @@
   {# Deliberately render-blocking: it sets data-theme before first paint, #}
   {# which is what stops a light flash on a dark-mode reader's screen. #}
   <script src="/static/theme.js"></script>
+  {% block head %}{% endblock %}
 </head>
-<body>
+<body{% block body_attributes %}{% endblock %}>
   <div class="wrap">
     <header class="site-header">
       <div class="site-header-content">

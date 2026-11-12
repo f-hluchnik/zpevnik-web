@@ -1,0 +1,82 @@
+{# Macros that turn the parts of a song of songs.json into HTML. The shape of the
+   data is tools/songs.schema.json of the songbook repository; the chord rule is
+   D-123, set in static/songbook.css.
+
+   The HTML of a line has no whitespace between its items on purpose: the spaces
+   of the song are in the text itself, and any other would be shown as one. #}
+
+{# A text: a list of runs, gaps (pauses, in em) and footnote marks. #}
+{% macro text(parts) -%}
+{%- for part in parts -%}
+  {%- if part.type == "run" -%}
+    {%- if part.style -%}
+      <span class="{% for style in part.style %}run-{{ style }}{% if not loop.last %} {% endif %}{% endfor %}">{{ part.text }}</span>
+    {%- else -%}{{ part.text }}{%- endif -%}
+  {%- elif part.type == "gap" -%}
+    <span class="gap" style="width: {{ part.em }}em"></span>
+  {%- else -%}
+    <sup class="footnote-mark"><a id="fnref{{ part.number }}" href="#fn{{ part.number }}">{{ part.number }}</a></sup>
+  {%- endif -%}
+{%- endfor -%}
+{%- endmacro %}
+
+{# A chord: a list of parts, the quality and the bass note being raised or lowered. #}
+{% macro chord(parts) -%}
+{%- for part in parts -%}
+  {%- if part.position == "superscript" -%}<sup>{{ part.text }}</sup>
+  {%- elif part.position == "subscript" -%}<sub>{{ part.text }}</sub>
+  {%- else -%}{{ part.text }}{%- endif -%}
+{%- endfor -%}
+{%- endmacro %}
+
+{# A chord and the text under it. `endsInWord`: the next chord is inside the word,
+   so the gap before it holds a hyphen when it is wide enough. #}
+{% macro segment(item) -%}
+<span class="segment{% if item.chord and not item.lyrics %} chord-run{% endif %}">
+{%- if item.chord -%}<span class="chord">{{ chord(item.chord) }}</span>{%- endif -%}
+<span class="lyrics">
+{%- if item.endsInWord -%}
+  <span class="lyrics-text">{{ text(item.lyrics) }}</span><span class="hyphen-room"><span class="hyphen"></span></span>
+{%- else -%}{{ text(item.lyrics) }}{%- endif -%}
+</span></span>
+{%- endmacro %}
+
+{# The things on a line between and beside the segments. #}
+{% macro line_item(item) -%}
+{%- if item.type == "segment" -%}{{ segment(item) }}
+{%- elif item.type == "repeatStart" -%}<span class="repeat">\:</span>
+{%- elif item.type == "repeatEnd" -%}<span class="repeat">:\</span>
+{%- elif item.type == "cue" -%}<span class="cue">{{ item.label }}</span>
+{%- elif item.type == "note" -%}<span class="note">{{ text(item.content) }}</span>
+{%- elif item.type == "speaker" -%}<span class="speaker">{{ item.name }}:</span>
+{%- elif item.type == "score" -%}<img class="score" src="{{ site.scores_path }}{{ item.name }}.svg" alt="Noty">
+{%- endif -%}
+{%- endmacro %}
+
+{# A line of chords only is set in the text row, as in the book. #}
+{% macro line(item) -%}
+<div class="line{% if item is chord_only %} chords-only{% endif %}{% if item.groupStart %} group-start{% endif %}">
+{%- for part in item["items"] -%}{{ line_item(part) }}{%- endfor -%}
+</div>
+{%- endmacro %}
+
+{# One block of a song: the label in its own column, the lines beside it. #}
+{% macro block(label, lines, classes) -%}
+<section class="block {{ classes }}">
+<span class="block-label">{{ label }}</span>
+<div class="block-lines">
+{%- for item in lines %}
+{{ line(item) }}
+{%- endfor %}
+</div>
+</section>
+{%- endmacro %}
+
+{% macro body_item(item) -%}
+{%- if item.type == "block" -%}{{ block(item.label, item.lines, "block-" ~ item.kind) }}
+{%- elif item.type == "speakerBlock" -%}{{ block(item.name ~ ":", item.lines, "block-speaker") }}
+{%- elif item.type == "cueBlock" -%}{{ block(item.label, [item.line], "block-cue") }}
+{%- elif item.type == "note" -%}<p class="song-note">{{ text(item.content) }}</p>
+{%- elif item.type == "rule" -%}<hr class="rule rule-{{ item.kind }}">
+{%- endif -%}
+{%- endmacro %}

@@ -1,0 +1,228 @@
+/* ==========================================================================
+   The online songbook (song pages). Loaded after style.css, only by the pages
+   of the songbook, and built on its tokens.
+
+   The chord rule is the songbook's (D-123, zpevnik.sty):
+     * a chord and its text take max(text width, chord width + --chord-sep);
+     * two chords with no text between them: chord width + --chord-run-sep;
+     * a pause is a fixed gap, given in em;
+     * a gap that splits a word holds a hyphen, when it is wide enough.
+   The CSS needs no JavaScript for any of it.
+     1. Tokens   2. Page   3. Lines and chords   4. Blocks   5. Rest of a song
+     6. Dark mode   7. Narrow screens
+   ========================================================================== */
+
+/* 1. Tokens ------------------------------------------------------------- */
+
+.songbook {
+  --chord:         light-dark(#b82727, #ff8f8f);  /* the book's chord red       */
+  --chord-sep:     0.5em;
+  --chord-run-sep: 1em;
+  --label-width:   2.4em;
+}
+
+/* 2. Page --------------------------------------------------------------- */
+
+.songbook .wrap { max-width: 56rem; }
+
+.song-title {
+  margin: 0;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+
+.song-artists,
+.song-subtitle {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
+.song-subtitle { font-style: italic; color: var(--ink); }
+
+/* The scale is set on <html> by songbook.js; 1 is the size of the book. */
+.song-body {
+  margin-top: 1.5rem;
+  font-size: calc(1.1rem * var(--song-font-scale, 1));
+  line-height: 1.35;
+}
+
+/* Hidden until songbook.js shows it. */
+.font-size-control { margin-top: 0.8rem; }
+.font-size-control button {
+  min-width: 2.6rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--muted);
+  border-radius: 0.4rem;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.font-size-control button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 3. Lines and chords --------------------------------------------------- */
+
+.line { margin: 0; }
+.line.group-start { margin-top: 0.9em; }
+
+/* A chord and its text: a column that is as wide as the wider of the two. The
+   chord's padding is the separator, so the column is max(text, chord + sep).
+   Inline-blocks line up on the baseline of their last row, the text. */
+.segment {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.chord {
+  display: block;
+  padding-right: var(--chord-sep);
+  color: var(--chord);
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.chord sup,
+.chord sub { line-height: 0; }
+
+/* The spaces of the text are the song's: keep them, also at the ends. */
+.lyrics {
+  display: block;
+  white-space: pre-wrap;
+}
+
+/* An empty text still has its row, so that the chord stands above the baseline. */
+.lyrics:empty::before { content: "\200b"; }
+
+/* Chords with no text: farther apart. */
+.chord-run .chord { padding-right: var(--chord-run-sep); }
+
+/* A line of chords only (an intro) is set in the line of text, as in the book. */
+.chords-only .segment { display: inline; }
+.chords-only .chord { display: inline; padding-right: var(--chord-run-sep); }
+.chords-only .lyrics { display: none; }
+/* The chords have no spaces between them: a line may break after each one. */
+.chords-only .segment::after { content: "\200b"; }
+
+/* A gap inside a word holds a hyphen, centred in the gap, when the gap is wide
+   enough for one: 0.4em, a little more than the hyphen. The book widens a
+   narrower gap to hold one; here it stays as it is, without the hyphen, as
+   CSS cannot widen it only then. A word that goes on without a gap gets no
+   hyphen, in the book and here. (A container query cannot use a custom
+   property, hence the number.) */
+.lyrics:has(.hyphen-room) { display: flex; }
+/* The text takes what it needs, and wraps when there is not enough room. */
+.lyrics-text { flex: 0 1 auto; min-width: 0; }
+.hyphen-room {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  container-type: inline-size;
+}
+@container (min-width: 0.4em) {
+  .hyphen::before { content: "-"; }
+}
+
+/* A pause: a fixed gap, its width is in the style attribute, in em. */
+.gap { display: inline-block; }
+
+.run-italic { font-style: italic; }
+.run-bold { font-weight: 700; }
+.run-subscript { vertical-align: sub; font-size: 0.75em; line-height: 0; }
+.run-superscript { vertical-align: super; font-size: 0.75em; line-height: 0; }
+/* An echo is a raised italic at the size of the text. */
+.run-echo { position: relative; top: -0.4em; font-style: italic; }
+
+.repeat { margin: 0 0.35em; font-weight: 700; }
+.cue { margin-left: 1em; font-weight: 700; }
+.speaker { margin-right: 0.3em; font-style: italic; }
+.note { margin-left: 0.6em; font-style: italic; }
+
+.score {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* 4. Blocks ------------------------------------------------------------- */
+
+/* The label ("1.", "R.") stands beside the lines, as in the book. */
+.block {
+  display: grid;
+  grid-template-columns: var(--label-width) 1fr;
+  column-gap: 0.5em;
+  align-items: baseline;
+  margin-top: 1.1em;
+  break-inside: avoid;
+}
+
+.block-label {
+  font-weight: 700;
+  text-align: right;
+}
+
+.block-speaker .block-label { font-style: italic; font-weight: 400; }
+
+/* The turns of a dialogue follow closely, as in the book. */
+.block-speaker { margin-top: 0.35em; }
+.block:not(.block-speaker) + .block-speaker { margin-top: 1.1em; }
+
+/* The label of a score stands beside the middle of the image, not its bottom edge. */
+.block:has(.score) { align-items: center; }
+
+.columns-2 { column-count: 2; column-gap: 2.5rem; }
+
+.song-note {
+  margin: 1.1em 0 0 calc(var(--label-width) + 0.5em);
+  font-style: italic;
+}
+
+.rule {
+  margin: 1.1em 0;
+  border: 0;
+  border-top: 1px solid var(--muted);
+}
+.rule-dashed { border-top-style: dashed; }
+
+/* 5. Rest of a song ------------------------------------------------------ */
+
+.footnote-mark { line-height: 0; font-size: 0.65em; }
+.footnote-mark a { color: inherit; text-decoration: none; }
+
+.footnotes {
+  margin: 2rem 0 0;
+  padding-left: 1.3rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.footnote-back { color: inherit; text-decoration: none; }
+
+.song-see { margin: 2rem 0 0; color: var(--muted); }
+.song-see a { color: var(--accent); }
+
+/* 6. Dark mode ----------------------------------------------------------- */
+
+/* The scores are black on transparent: turn them over, and back again so that
+   their red chord symbols stay red. */
+[data-theme="dark"] .score { filter: invert(1) hue-rotate(180deg); }
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .score { filter: invert(1) hue-rotate(180deg); }
+}
+
+/* 7. Narrow screens ------------------------------------------------------ */
+
+@media (max-width: 48rem) {
+  .columns-2 { column-count: 1; }
+}
+
+@media (max-width: 480px) {
+  .songbook { --label-width: 2em; }
+  .songbook .wrap { padding-left: 0.9rem; padding-right: 0.9rem; }
+  .song-title { font-size: 1.6rem; }
+}

@@ -1,0 +1,51 @@
+{# One song of the online songbook, at <songbook_path><id>/. D-103, D-167. #}
+{% extends "base.html" %}
+{% from "_song.html" import text, body_item with context %}
+
+{% block title %}{{ song.tocTitle }} — {{ site.title }}{% endblock %}
+
+{% block head %}
+  {# The online songbook is not offered to search engines. #}
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/static/songbook.css">
+  <script src="/static/songbook.js"></script>
+{% endblock %}
+
+{% block body_attributes %} class="songbook"{% endblock %}
+
+{% block content %}
+<article class="song">
+  <header class="song-header">
+    <h1 class="song-title">{{ text(song.title) }}</h1>
+    {% if song.artists %}
+    <p class="song-artists">{% for artist in song.artists %}{{ artist.label or artists[artist.slug].linkLabel }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+    {% endif %}
+    {% if song.subtitle %}
+    <p class="song-subtitle">{{ text(song.subtitle) }}</p>
+    {% endif %}
+    {# Hidden until songbook.js shows it: without JavaScript it could do nothing. #}
+    <div class="font-size-control" hidden>
+      <button type="button" data-font-step="-1" aria-label="Zmenšit písmo">A&minus;</button>
+      <button type="button" data-font-step="1" aria-label="Zvětšit písmo">A+</button>
+    </div>
+  </header>
+
+  <div class="song-body columns-{{ song.columns }}">
+    {% for item in song.body %}
+    {{ body_item(item) }}
+    {% endfor %}
+  </div>
+
+  {% if song.footnotes %}
+  <ol class="footnotes">
+    {% for lines in song.footnotes %}
+    <li id="fn{{ loop.index }}">{% for line in lines %}{{ text(line) }}{% if not loop.last %}<br>{% endif %}{% endfor %} <a class="footnote-back" href="#fnref{{ loop.index }}" aria-label="Zpět na text">&uarr;</a></li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  {% if song.see %}
+  <p class="song-see">Viz také: {% for target in song.see %}<a href="{{ site.songbook_path }}{{ target.id }}/">{{ text(target.title) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+</article>
+{% endblock %}

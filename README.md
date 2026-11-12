@@ -16,6 +16,7 @@ Nothing is shared at build time; the blog links to this site from its
 ```
 content/pages/*.md   one file per page   (index.md is the front page)
 templates/*.html     one file per shape  (see below)
+songbook.py          helpers of the song pages (tested in tests/)
 static/              CSS, JS, icons — copied to dist/static/ as-is
 static/files/        the koledy songbook (the other PDFs are downloaded, see below)
 version.txt          the songbook release this build publishes (written by its CI)
@@ -32,12 +33,13 @@ Two kinds of thing, and the templates follow directly from them:
 | | |
 |---|---|
 | **Content** you author | `content/pages/` |
-| **Templates**, one per shape | single item: `page.html` |
+| **Templates**, one per shape | authored page: `page.html`; song: `song.html` |
 
-There is no index template — no posts, no tags, no archives to derive. The
-blog has those; this site does not, and that is the only structural
-difference between the two `build.py` files. Partials start with an underscore
-(`_theme-toggle.html`) and are `include`d, not extended.
+The songs are a third kind of thing: data from the release (`songs.json`, see
+below), not content you author. The blog has posts, tags and archives; this
+site has the front page and the songbook. Partials start with an underscore
+(`_theme-toggle.html`, `_song.html`) and are `include`d or imported, not
+extended.
 
 ## Adding a page
 
@@ -105,13 +107,44 @@ it.
 The build fails, like for a PDF, if the file is missing from the release, is not
 JSON or has another `schemaVersion`.
 
-To work on the site with a `songs.json` that is not released yet (for example
-the `build/songs.json` of a songbook working copy, made by `make json`), name
-the file:
+The score images (the `score` items of the songs) come the same way from
+`scores.zip` of the release, and are served at `/static/scores/<name>.svg`. The
+build also fails if a song shows a score that the zip lacks, or if a song
+refers to a song that is not in `songs.json`.
+
+To work on the site with files that are not released yet (for example those of
+a songbook working copy, made by `make json`), name them:
 
 ```bash
-python build.py --songs-json ../zpevnik/build/songs.json
+python build.py --songs-json ../zpevnik/build/songs.json --scores-zip FILE
 ```
+
+## The online songbook
+
+The songbook lives under `/zpivej/` (`SONGBOOK_URL_PATH` in `build.py`, D-167):
+one page per song, at `/zpivej/<id>/`, from `templates/song.html` and the
+macros in `templates/_song.html`, which follow the shape of `songs.json`. Its
+own stylesheet (`static/songbook.css`) is loaded by the song pages only. Every
+page carries `<meta name="robots" content="noindex">`. The download page does
+not link to the songbook yet: the link comes with the index (W3).
+
+**The chord rule** (D-123) is in `songbook.css`, and needs no JavaScript. A
+chord and its text are an inline-block, as wide as the wider of the text and
+the chord plus 0.5 em (the chord's padding); chords without text are 1 em
+apart; a pause (`gap`) is a fixed space whose width in em comes from the data.
+The spaces of the text are kept (`white-space: pre-wrap`). A line of chords
+only is set in the line of text, as in the book.
+One difference from the book: where a chord stands inside a word, the book
+widens the gap to hold a hyphen. CSS cannot widen it only then, so the hyphen
+is shown if the gap, which the chord's width makes, is at least 0.4 em wide,
+and a narrower gap stays empty. A word that continues without a gap has no
+hyphen, in the book and here.
+
+**The font size** buttons (`static/songbook.js`) are hidden without JavaScript;
+the choice is remembered in the browser. The song reads the same without them.
+
+**An unknown song** (`/zpivej/<anything else>`) gets `404.html`, as every path
+GitHub Pages cannot match does; `python build.py --serve` does the same.
 
 ## Tests
 
