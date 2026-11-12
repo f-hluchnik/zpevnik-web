@@ -59,6 +59,7 @@ from songbook import (
     check_see_links,
     is_chord_only_line,
     read_score_images,
+    search_entry,
 )
 
 # --------------------------------------------------------------------------
@@ -90,11 +91,20 @@ SCORES_ASSET = "scores.zip"  # the score images (SVG) the songs show
 SCORES_URL_PATH = "/static/scores/"  # where they are served
 
 # Where the online songbook is served (D-167): the index at <path>, a song at
-# <path><id>/, the list of artists at <path>interpret/ and an artist or a
-# collection at <path>interpret/<slug>/ (D-103, D-168).
+# <path><id>/, the list of artists at <path>interpret/, an artist or a
+# collection at <path>interpret/<slug>/ (D-103, D-168) and the search at
+# <path>hledat/ (D-170). A song id may be none of these directory names.
 SONGBOOK_URL_PATH = "/zpivej/"
 ARTISTS_DIRECTORY = "interpret"
 ARTISTS_URL_PATH = f"{SONGBOOK_URL_PATH}{ARTISTS_DIRECTORY}/"
+SEARCH_DIRECTORY = "hledat"
+SEARCH_URL_PATH = f"{SONGBOOK_URL_PATH}{SEARCH_DIRECTORY}/"
+RESERVED_DIRECTORIES = (ARTISTS_DIRECTORY, SEARCH_DIRECTORY)
+
+# What the search looks through, written at build time and loaded by the search
+# page when it is first used.
+SEARCH_INDEX_FILE = "search-index.json"
+SEARCH_INDEX_URL_PATH = f"/static/{SEARCH_INDEX_FILE}"
 
 # The two parts of the site, which the tabs under the header switch between
 # (`site_section` of a page); a page of neither, the 404 page, marks no tab.
@@ -105,6 +115,7 @@ SECTION_SONGBOOK = "songbook"
 # (`songbook_section` of a page); a song belongs to the contents.
 CONTENTS_SECTION = "contents"
 ARTISTS_SECTION = "artists"
+SEARCH_SECTION = "search"
 
 # `extra` is a bundle. The part that matters here is md_in_html, which lets the
 # raw <details markdown="1"> accordions in index.md still render as Markdown;
@@ -161,6 +172,8 @@ SITE = {
     "url": "https://zpevnik.hluchnikovi.cz",
     "songbook_path": SONGBOOK_URL_PATH,
     "artists_path": ARTISTS_URL_PATH,
+    "search_path": SEARCH_URL_PATH,
+    "search_index_path": SEARCH_INDEX_URL_PATH,
     "pdf_path": SONGBOOK_PDF_URL,
     "scores_path": SCORES_URL_PATH,
     "contact_email": "frantahluchnik@gmail.com",  # removal requests (the legal notice in the footer)
@@ -371,6 +384,9 @@ def render_songbook(document: dict) -> None:
 
     render_page = partial(render, site_section=SECTION_SONGBOOK)
 
+    render_page("search.html", songbook_dir / SEARCH_DIRECTORY / "index.html",
+                songbook_section=SEARCH_SECTION)
+
     render_page("contents.html", songbook_dir / "index.html", sections=document["contents"],
                 songs=songs_by_id, songbook_section=CONTENTS_SECTION)
 
@@ -388,6 +404,15 @@ def render_songbook(document: dict) -> None:
                     songbook_section=CONTENTS_SECTION)
 
 
+def write_search_index(document: dict) -> None:
+    """What the search looks through, one entry per song in book order, as compact JSON."""
+    artists = {artist["slug"]: artist for artist in document["artists"]}
+    entries = [search_entry(song, artists) for song in document["songs"]]
+    index_file = OUTPUT_DIR / SEARCH_INDEX_URL_PATH.strip("/")
+    index_file.parent.mkdir(parents=True, exist_ok=True)
+    index_file.write_text(json.dumps(entries, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
 def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> None:
     # Parse and download before deleting dist/, so a broken page or an
     # unreachable release leaves the previous build in place instead of an
@@ -398,7 +423,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     document = load_songs_document(version, songs_json)
     songs = document["songs"]
     check_see_links(songs)
-    check_free_ids(songs, reserved=[ARTISTS_DIRECTORY])
+    check_free_ids(songs, reserved=RESERVED_DIRECTORIES)
     score_images = load_score_images(version, scores_zip, songs)
 
     if OUTPUT_DIR.exists():
@@ -420,6 +445,8 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     files_dir.mkdir(parents=True, exist_ok=True)
     for served_as, content in edition_pdfs.items():
         (files_dir / served_as).write_bytes(content)
+
+    write_search_index(document)
 
     scores_dir = OUTPUT_DIR / SCORES_URL_PATH.strip("/")
     scores_dir.mkdir(parents=True)

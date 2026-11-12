@@ -123,6 +123,63 @@ class CheckFreeIdsTest(unittest.TestCase):
             songbook.check_free_ids([song("a"), song("interpret")], reserved=["interpret"])
 
 
+def run(text):
+    return {"type": "run", "text": text, "style": []}
+
+
+GAP = {"type": "gap", "em": 1}
+FOOTNOTE = {"type": "footnote", "number": 1}
+
+
+class PlainTextTest(unittest.TestCase):
+    def test_joins_the_runs(self):
+        self.assertEqual(songbook.plain_text([run("Ain’t "), run("no grave")]), "Ain’t no grave")
+
+    def test_a_pause_is_a_space_and_a_footnote_mark_is_nothing(self):
+        self.assertEqual(songbook.plain_text([run("one"), GAP, run("two"), FOOTNOTE, run("!")]), "one two!")
+
+    def test_a_run_of_spaces_is_one(self):
+        self.assertEqual(songbook.plain_text([run(" a  b\u00a0 c ")]), "a b c")
+
+
+class LyricsLinesTest(unittest.TestCase):
+    def lyrics_segment(self, chord, *parts):
+        return {"type": "segment", "chord": chord, "lyrics": list(parts), "endsInWord": False}
+
+    def test_a_word_split_by_a_chord_is_whole_again(self):
+        first = line(self.lyrics_segment(CHORD, run("to")), self.lyrics_segment(CHORD, run("mu je ")))
+        self.assertEqual(songbook.lyrics_lines(song("a", [{"type": "block", "lines": [first]}])), ["tomu je"])
+
+    def test_takes_the_lines_of_every_block_and_leaves_out_what_is_not_lyrics(self):
+        words = line(self.lyrics_segment(None, run("la")), {"type": "cue", "label": "Refrén"}, SCORE)
+        chords_only = line(self.lyrics_segment(CHORD))
+        body = [
+            {"type": "block", "lines": [words, chords_only]},
+            {"type": "cueBlock", "line": line(self.lyrics_segment(None, run("lo")))},
+            {"type": "note", "content": [run("not lyrics")]},
+        ]
+        self.assertEqual(songbook.lyrics_lines(song("a", body)), ["la", "lo"])
+
+
+class SearchEntryTest(unittest.TestCase):
+    def test_holds_the_titles_the_artists_and_the_lyrics(self):
+        artists = {"abba": {"linkLabel": "ABBA"}, "filmy": {"linkLabel": "filmová hudba"}}
+        the_song = {
+            **song("dance", [{"type": "block", "lines": [line(segment(None, "Hej"))]}],
+                   artists=[("abba", None)], collections=["filmy"]),
+            "tocTitle": "Dance", "altTitles": ["Tanec"],
+        }
+        self.assertEqual(songbook.search_entry(the_song, artists), {
+            "id": "dance", "title": "Dance", "altTitles": ["Tanec"],
+            "artists": ["ABBA", "filmová hudba"], "lyrics": "Hej",
+        })
+
+    def test_the_song_s_own_wording_of_an_artist_is_what_is_searched(self):
+        the_song = {**song("a", artists=[("lenk", "J. S. Lenk")]), "tocTitle": "A", "altTitles": []}
+        entry = songbook.search_entry(the_song, {"lenk": {"linkLabel": "Jaroslav Samson Lenk"}})
+        self.assertEqual(entry["artists"], ["J. S. Lenk"])
+
+
 class ScoreImagesTest(unittest.TestCase):
     def test_reads_the_svg_files(self):
         images = songbook.read_score_images(zip_with("riff.svg", "tune.svg"), "test")
