@@ -15,6 +15,7 @@
 {% block head %}
   {{ super() }}
   <script src="{{ asset_url('songbook.js') }}"></script>
+  <script src="{{ asset_url('wake-lock.js') }}" defer></script>
 {% endblock %}
 
 {% block songbook_content %}
@@ -29,12 +30,14 @@
     {% if song.subtitle %}
     <p class="song-subtitle">{{ text(song.subtitle) }}</p>
     {% endif %}
-    {# Hidden until songbook.js shows it: without JavaScript it could do nothing. #}
+    {# Hidden until songbook.js (font size) and wake-lock.js (the screen) show them: without
+       JavaScript, or without the API, they could do nothing. #}
     <div class="song-tools">
       <div class="font-size-control" hidden>
         <button type="button" data-font-step="-1" aria-label="Zmenšit písmo">A&minus;</button>
         <button type="button" data-font-step="1" aria-label="Zvětšit písmo">A+</button>
       </div>
+      <button type="button" class="wake-lock-toggle" aria-pressed="false" hidden>Nezhasínat displej</button>
       <a class="song-pdf" href="{{ site.pdf_path }}#page={{ song.page }}">otevřít v PDF (strana {{ song.page }})</a>
     </div>
   </header>

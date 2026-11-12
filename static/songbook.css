@@ -51,8 +51,11 @@
   line-height: 1.35;
 }
 
-/* The font size buttons; the control itself is hidden until songbook.js shows it. */
-.font-size-control button {
+/* The font size buttons and the toggle of the screen; hidden until songbook.js
+   and wake-lock.js show them. The toggle is filled while it is on, as the
+   marked tab of the site is. */
+.font-size-control button,
+.wake-lock-toggle {
   min-width: 2rem;
   padding: 0.1rem 0.45rem;
   border: 1px solid var(--muted);
@@ -62,7 +65,9 @@
   font: inherit;
   cursor: pointer;
 }
-.font-size-control button:hover { border-color: var(--accent); color: var(--accent); }
+.font-size-control button:hover,
+.wake-lock-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.wake-lock-toggle[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
 
 /* 3. Lines and chords --------------------------------------------------- */
 
@@ -260,7 +265,7 @@
 .entries a { color: var(--ink); text-decoration: none; }
 .entries a:hover { color: var(--accent); }
 
-/* The font size and the PDF, under the title. */
+/* The font size, the screen and the PDF, under the title. */
 .song-tools {
   display: flex;
   flex-wrap: wrap;
