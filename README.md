@@ -123,8 +123,8 @@ python build.py --songs-json ../zpevnik/build/songs.json --scores-zip FILE
 
 The songbook lives under `/zpivej/` (`SONGBOOK_URL_PATH` in `build.py`, D-167).
 Every page of it extends `templates/songbook_base.html`: its own stylesheet
-(`static/songbook.css`), `<meta name="robots" content="noindex">` and its
-navigation (Písničky · Interpreti · Ke stažení). The pages:
+(`static/songbook.css`), `<meta name="robots" content="noindex">` and its own
+navigation (Písničky · Interpreti), under the tabs of the site. The pages:
 
 | URL | what | template |
 |---|---|---|
@@ -144,8 +144,17 @@ is false) has no page and is named in plain text.
 A song page links its artists and collections, and "otevřít v PDF" opens the
 full book (`zpevnik_last.pdf`) at the song's `page`, which is the PDF page
 index (D-165). `#page=N` is the usual open parameter of browser PDF viewers;
-it has not been tried on a phone, whose viewer may ignore it. The download page
-links to the index, and `404.html` does too.
+it has not been tried on a phone, whose viewer may ignore it.
+
+**Two levels of navigation.** The tabs *Stáhnout* and *Zobrazit online*
+(`templates/_site-nav.html`, in `base.html`) are on every page of the site and
+mark the part the reader is in (`site_section`: `SECTION_DOWNLOAD`,
+`SECTION_SONGBOOK` in `build.py`; the 404 page marks none). Only under
+`/zpivej/` a second row (`_songbook-nav.html`, `songbook_section`) switches
+between the index and the artists. They are plain links to separate pages, so
+they work without JavaScript and keep the `noindex` of the songbook to its own
+pages; they look like tabs but are not ARIA tabs. `404.html` links to the
+index as well.
 
 **The chord rule** (D-123) is in `songbook.css`, and needs no JavaScript. A
 chord and its text are an inline-block, as wide as the wider of the text and

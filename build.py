@@ -96,6 +96,16 @@ SONGBOOK_URL_PATH = "/zpivej/"
 ARTISTS_DIRECTORY = "interpret"
 ARTISTS_URL_PATH = f"{SONGBOOK_URL_PATH}{ARTISTS_DIRECTORY}/"
 
+# The two parts of the site, which the tabs under the header switch between
+# (`site_section` of a page); a page of neither, the 404 page, marks no tab.
+SECTION_DOWNLOAD = "download"
+SECTION_SONGBOOK = "songbook"
+
+# The parts of the songbook, which its own navigation switches between
+# (`songbook_section` of a page); a song belongs to the contents.
+CONTENTS_SECTION = "contents"
+ARTISTS_SECTION = "artists"
+
 # `extra` is a bundle. The part that matters here is md_in_html, which lets the
 # raw <details markdown="1"> accordions in index.md still render as Markdown;
 # drop it and that content comes out as literal text. `footnotes` is named
@@ -248,7 +258,7 @@ def load_pages(version: str) -> list[dict]:
     placeholders = {
         "__VERSION__": version,
         "__DOWNLOADS__": env.get_template("_downloads.html").render(
-            downloads=download_links(version), songbook_path=SONGBOOK_URL_PATH
+            downloads=download_links(version)
         ),
     }
 
@@ -341,11 +351,11 @@ def load_score_images(version: str, local_file: Path | None, songs: list[dict]) 
 # --------------------------------------------------------------------------
 
 
-def render(template_name: str, out_path: Path, **context) -> None:
+def render(template_name: str, out_path: Path, site_section: str | None = None, **context) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         env.get_template(template_name).render(
-            site=SITE, current_year=date.today().year, **context
+            site=SITE, site_section=site_section, current_year=date.today().year, **context
         ),
         encoding="utf-8",
     )
@@ -359,20 +369,23 @@ def render_songbook(document: dict) -> None:
     songbook_dir = OUTPUT_DIR / SONGBOOK_URL_PATH.strip("/")
     artists_dir = songbook_dir / ARTISTS_DIRECTORY
 
-    render("contents.html", songbook_dir / "index.html", sections=document["contents"],
-           songs=songs_by_id, nav_section="contents")
+    render_page = partial(render, site_section=SECTION_SONGBOOK)
+
+    render_page("contents.html", songbook_dir / "index.html", sections=document["contents"],
+                songs=songs_by_id, songbook_section=CONTENTS_SECTION)
 
     # An artist without a section has no page, as in the book; the songs name them in plain text.
     artists_with_page = [artist for artist in document["artists"] if artist["section"]]
-    render("artists.html", artists_dir / "index.html", artists_with_page=artists_with_page,
-           nav_section="artists")
+    render_page("artists.html", artists_dir / "index.html", artists_with_page=artists_with_page,
+                songbook_section=ARTISTS_SECTION)
     for artist in artists_with_page:
-        render("artist.html", artists_dir / artist["slug"] / "index.html", artist=artist,
-               songs=songs_by_id, nav_section="artists")
+        render_page("artist.html", artists_dir / artist["slug"] / "index.html", artist=artist,
+                    songs=songs_by_id, songbook_section=ARTISTS_SECTION)
 
     for previous_song, song, next_song in book_neighbours(songs):
-        render("song.html", songbook_dir / song["id"] / "index.html", song=song, artists=artists,
-               previous_song=previous_song, next_song=next_song, nav_section="contents")
+        render_page("song.html", songbook_dir / song["id"] / "index.html", song=song, artists=artists,
+                    previous_song=previous_song, next_song=next_song,
+                    songbook_section=CONTENTS_SECTION)
 
 
 def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> None:
@@ -393,7 +406,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     OUTPUT_DIR.mkdir(parents=True)
 
     for page in pages:
-        render("page.html", OUTPUT_DIR / page["output_path"], page=page)
+        render("page.html", OUTPUT_DIR / page["output_path"], site_section=SECTION_DOWNLOAD, page=page)
 
     render_songbook(document)
 

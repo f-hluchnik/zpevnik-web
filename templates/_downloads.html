@@ -1,7 +1,6 @@
 {# The front page's download buttons, from EDITION_DOWNLOADS in build.py: the
    first is the main button, the rest are secondary. The koledy songbook is not
-   an edition of the songbook; it is a static file in static/files/. Below them,
-   the link to the online songbook (W3). #}
+   an edition of the songbook; it is a static file in static/files/. #}
 {% set main = downloads[0] %}
 <a href="{{ main.href }}" class="btn btn-primary" download="{{ main.filename }}">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -17,4 +16,3 @@
     zpěvník vánočních písniček
   </a>
 </div>
-<a href="{{ songbook_path }}" class="btn btn-secondary">číst zpěvník online</a>
