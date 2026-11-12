@@ -13,7 +13,7 @@
 
 {% block head %}
   {{ super() }}
-  <script src="/static/songbook.js"></script>
+  <script src="{{ asset_url('songbook.js') }}"></script>
 {% endblock %}
 
 {% block songbook_content %}

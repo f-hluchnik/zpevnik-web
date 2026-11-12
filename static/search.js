@@ -3,9 +3,10 @@
  *
  * The index (static/search-index.json, written by build.py) is loaded when the
  * field is first used, not with the other pages. A query is split into words,
- * and a song is found when every word occurs in its title, other titles,
- * artists or lyrics, ignoring case and diacritics. Titles come before artists,
- * those before lyrics, and a line of lyrics with all the words together before
+ * and a song is found when every word is the beginning of a word in its title,
+ * other titles, artists or lyrics, ignoring case and diacritics ("jede" finds
+ * "jede" and "jedeme", not "pojedeme"). Titles come before artists, those
+ * before lyrics, and a line of lyrics with all the words together before
  * words found apart; within each, the songs stay in the order of the book.
  *
  * The query is kept in the address (?q=), so that the back button of the
@@ -38,9 +39,22 @@
   var songs = null; // the prepared index, once loaded
   var loading = null; // the request for it, while loading
 
+  var SPACE = " ";
+
   /* "Čerešně" and "ceresne" are the same word. */
   function fold(text) {
     return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  }
+
+  /* The words of a text, folded and one space apart ("Ain’t" is "ain t"), and a
+     space before the first. A word starts where SPACE + word is found, and such
+     texts can be joined by writing one after the other. */
+  function words(text) {
+    return SPACE + fold(text).replace(/[^\p{L}\p{N}]+/gu, SPACE).trim();
+  }
+
+  function startsWord(text, word) {
+    return text.indexOf(SPACE + word) !== -1;
   }
 
   function prepare(entries) {
@@ -49,10 +63,10 @@
       return {
         entry: entry,
         lines: lines,
-        title: fold(entry.title),
-        titles: fold([entry.title].concat(entry.altTitles).join("\n")),
-        artists: fold(entry.artists.join("\n")),
-        foldedLines: lines.map(fold)
+        title: words(entry.title),
+        titles: words([entry.title].concat(entry.altTitles).join(SPACE)),
+        artists: words(entry.artists.join(SPACE)),
+        wordLines: lines.map(words)
       };
     });
   }
@@ -77,34 +91,33 @@
     return loading;
   }
 
-  function containsAll(text, words) {
-    return words.every(function (word) {
-      return text.indexOf(word) !== -1;
+  function startsAll(text, queryWords) {
+    return queryWords.every(function (word) {
+      return startsWord(text, word);
     });
   }
 
   /* The rank of a song for these words, or null if it does not match. */
-  function rank(song, words) {
-    if (containsAll(song.title, words)) {
+  function rank(song, queryWords) {
+    if (startsAll(song.title, queryWords)) {
       return RANK_TITLE;
     }
-    if (containsAll(song.titles, words)) {
+    if (startsAll(song.titles, queryWords)) {
       return RANK_TITLES;
     }
-    if (containsAll(song.titles + "\n" + song.artists, words)) {
+    if (startsAll(song.titles + song.artists, queryWords)) {
       return RANK_ARTIST;
     }
-    var everything = song.titles + "\n" + song.artists + "\n" + song.foldedLines.join("\n");
-    if (!containsAll(everything, words)) {
+    if (!startsAll(song.titles + song.artists + song.wordLines.join(""), queryWords)) {
       return null;
     }
-    return lineIndexOf(song, words.join(" ")) !== -1 ? RANK_PHRASE : RANK_LYRICS;
+    return lineIndexOf(song, queryWords) !== -1 ? RANK_PHRASE : RANK_LYRICS;
   }
 
-  function search(words) {
+  function search(queryWords) {
     var found = [];
     songs.forEach(function (song, position) {
-      var songRank = rank(song, words);
+      var songRank = rank(song, queryWords);
       if (songRank !== null) {
         found.push({ song: song, rank: songRank, position: position });
       }
@@ -114,26 +127,28 @@
     });
   }
 
-  /* The first line of the lyrics with this text, or -1. */
-  function lineIndexOf(song, text) {
-    return song.foldedLines.findIndex(function (line) { return line.indexOf(text) !== -1; });
+  /* The first line of the lyrics where the words stand together, in this
+     order, or -1. */
+  function lineIndexOf(song, queryWords) {
+    var phrase = queryWords.join(SPACE);
+    return song.wordLines.findIndex(function (line) { return startsWord(line, phrase); });
   }
 
-  /* The line of the lyrics that shows why a song was found: the one with all
-     the words, else the first with one of them. */
-  function matchingLine(song, words) {
-    var index = lineIndexOf(song, words.join(" "));
-    for (var i = 0; index === -1 && i < words.length; i += 1) {
-      index = lineIndexOf(song, words[i]);
+  /* The line of the lyrics that shows why a song was found: the one with the
+     words together, else the first with one of them. */
+  function matchingLine(song, queryWords) {
+    var index = lineIndexOf(song, queryWords);
+    for (var i = 0; index === -1 && i < queryWords.length; i += 1) {
+      index = lineIndexOf(song, [queryWords[i]]);
     }
     return index === -1 ? null : song.lines[index];
   }
 
   /* An other title of the song with one of the words. */
-  function matchingOtherTitle(song, words) {
+  function matchingOtherTitle(song, queryWords) {
     var found = song.entry.altTitles.filter(function (title) {
-      var folded = fold(title);
-      return words.some(function (word) { return folded.indexOf(word) !== -1; });
+      var titleWords = words(title);
+      return queryWords.some(function (word) { return startsWord(titleWords, word); });
     });
     return found.length ? found[0] : null;
   }
@@ -145,7 +160,7 @@
     return created;
   }
 
-  function resultItem(match, words) {
+  function resultItem(match, queryWords) {
     var entry = match.song.entry;
     var item = document.createElement("li");
     var link = document.createElement("a");
@@ -155,12 +170,12 @@
     if (entry.artists.length) {
       item.appendChild(element("span", "result-artists", entry.artists.join(" · ")));
     }
-    var otherTitle = matchingOtherTitle(match.song, words);
+    var otherTitle = matchingOtherTitle(match.song, queryWords);
     if (otherTitle) {
       item.appendChild(element("span", "result-detail", "též: " + otherTitle));
     }
     if (match.rank >= RANK_PHRASE) {
-      var line = matchingLine(match.song, words);
+      var line = matchingLine(match.song, queryWords);
       if (line) {
         item.appendChild(element("span", "result-detail result-line", line));
       }
@@ -180,10 +195,10 @@
     status.textContent = text;
   }
 
-  function showResults(found, words) {
+  function showResults(found, queryWords) {
     resultList.replaceChildren.apply(
       resultList,
-      found.slice(0, MAX_RESULTS).map(function (match) { return resultItem(match, words); })
+      found.slice(0, MAX_RESULTS).map(function (match) { return resultItem(match, queryWords); })
     );
     if (found.length === 0) {
       showStatus("Nic nenalezeno.");
@@ -199,7 +214,7 @@
   }
 
   function splitWords(query) {
-    return fold(query).split(/\s+/).filter(Boolean);
+    return words(query).split(SPACE).filter(Boolean);
   }
 
   function rememberQuery(query) {

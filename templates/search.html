@@ -7,12 +7,12 @@
 
 {% block head %}
   {{ super() }}
-  <script src="/static/search.js" defer></script>
+  <script src="{{ asset_url('search.js') }}" defer></script>
 {% endblock %}
 
 {% block songbook_content %}
 <h1 class="page-title">Hledat</h1>
-<form class="search" role="search" action="{{ site.search_path }}" data-index-url="{{ site.search_index_path }}" data-songbook-path="{{ site.songbook_path }}">
+<form class="search" role="search" action="{{ site.search_path }}" data-index-url="{{ search_index_url }}" data-songbook-path="{{ site.songbook_path }}">
   <label class="visually-hidden" for="search-query">Název, interpret nebo text písničky</label>
   <input id="search-query" class="search-field" type="search" name="q" placeholder="název, interpret nebo text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" autofocus>
 </form>

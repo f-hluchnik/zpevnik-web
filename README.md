@@ -155,8 +155,9 @@ leaves out chords, labels and notes): about 680 kB, 260 kB gzipped. Only the
 search page fetches it, when its field is first used (it asks for the focus, so
 that is when the page opens), and the script keeps it in memory. `static/search.js` splits the query into words, ignores case and
 diacritics (Unicode NFD, so `ceresne` finds *Čerešně*), and finds a song when
-every word occurs in its title, other titles, artists or lyrics, anywhere in a
-word (`jede` also finds `jeden`). The order: the title has all the words, then
+every word of the query is the beginning of a word in its title, other titles,
+artists or lyrics (`jede` finds `jede`, `jeden` and `jedeme`, not `pojedeme`;
+punctuation is a space, so `ain't` is the words `ain` and `t`). The order: the title has all the words, then
 the title and other titles, then with the artists, then a line of the lyrics
 with all the words together, then the words found apart; within each rank the
 songs stay in book order. A hit in the lyrics shows the line; a hit in another
@@ -165,6 +166,15 @@ button of the browser returns from a song to the results. Without JavaScript
 the page says so and links to the index and the artists. There is no library;
 the page has been tried in a browser, but there are no automated tests of
 `search.js`.
+
+**Versioned URLs.** GitHub Pages lets a browser keep a file for ten minutes,
+so a visitor who has just seen the site could get new pages with the old style
+sheet (after the search was added, the search page then looked unstyled: a tiny
+box and a numbered list). The style sheets, the scripts and the search index are
+therefore asked for as `<path>?v=<hash of the content>`: `asset_url()` in
+`build.py` (a global of the templates) makes it for the files of `static/`, and
+the index gets its own. The icons and the PDFs keep their plain URLs; the PDF
+`zpevnik_last.pdf` must (printed QR codes).
 
 **Two levels of navigation.** The tabs *Stáhnout* and *Zobrazit online*
 (`templates/_site-nav.html`, in `base.html`) are on every page of the site and
