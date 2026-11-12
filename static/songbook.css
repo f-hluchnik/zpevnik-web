@@ -289,7 +289,7 @@
 .song-neighbours a:hover { text-decoration: underline; }
 .song-neighbours .next { margin-left: auto; text-align: right; }
 
-/* The search: a wide field, and the results as a list of titles with what was found. */
+/* The search: a wide field, and the results in groups of titles with what was found. */
 .search-field {
   width: 100%;
   padding: 0.7rem 0.9rem;
@@ -304,14 +304,39 @@
 
 .search-status { min-height: 1.6em; margin: 0.8rem 0; color: var(--muted); }
 
-.search-results { margin: 0; padding: 0; list-style: none; }
-.search-results li { padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+.result-group { margin-top: 1.4rem; }
+.result-heading {
+  margin: 0 0 0.2rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.result-count { font-weight: 400; }
+.result-group ul { margin: 0; padding: 0; list-style: none; }
+.result-group li { padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
 .search-results a { color: var(--ink); text-decoration: none; }
 .search-results a:hover .result-title { color: var(--accent); }
 .result-title { font-weight: 500; }
 .result-artists { margin-left: 0.6rem; color: var(--muted); }
 .result-detail { display: block; color: var(--muted); font-size: 0.9rem; }
 .result-line { font-style: italic; }
+.result-line strong { color: var(--ink); font-weight: 700; }
+
+.result-more {
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--muted);
+  border-radius: 0.4rem;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.result-more:hover { border-color: var(--accent); color: var(--accent); }
 
 /* 7. Dark mode ----------------------------------------------------------- */
 

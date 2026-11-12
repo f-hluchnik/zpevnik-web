@@ -8,6 +8,9 @@
  * "jede" and "jedeme", not "pojedeme"). Titles come before artists, those
  * before lyrics, and a line of lyrics with all the words together before
  * words found apart; within each, the songs stay in the order of the book.
+ * The results come in two groups, so that it is clear why a song was found:
+ * the title or the artist, and the lyrics only. A song is in one group only,
+ * the one it matches best.
  *
  * The query is kept in the address (?q=), so that the back button of the
  * browser returns from a song to the results.
@@ -16,7 +19,7 @@
   "use strict";
 
   var MIN_QUERY_LENGTH = 2;
-  var MAX_RESULTS = 60;
+  var LYRICS_SHOWN = 10; // of the group of the lyrics, until the reader asks for all
   var QUERY_PARAMETER = "q";
 
   // How well a song matches: the lower, the better.
@@ -26,13 +29,27 @@
   var RANK_PHRASE = 3; // the words together in one line of the lyrics
   var RANK_LYRICS = 4; // the words in the lyrics, apart
 
+  // The groups of the results, in the order shown.
+  var GROUPS = [
+    {
+      title: "V názvu nebo u interpreta",
+      includes: function (rank) { return rank <= RANK_ARTIST; },
+      shown: Infinity
+    },
+    {
+      title: "V textu",
+      includes: function (rank) { return rank >= RANK_PHRASE; },
+      shown: LYRICS_SHOWN
+    }
+  ];
+
   var form = document.querySelector(".search");
   if (!form) {
     return;
   }
   var field = form.querySelector(".search-field");
   var status = document.querySelector(".search-status");
-  var resultList = document.querySelector(".search-results");
+  var results = document.querySelector(".search-results");
   var indexUrl = form.dataset.indexUrl;
   var songbookPath = form.dataset.songbookPath;
 
@@ -160,6 +177,27 @@
     return created;
   }
 
+  /* A line of lyrics as a fragment, with the words that were looked for in bold:
+     those that begin with one of the query words. */
+  function highlightedLine(line, queryWords) {
+    var fragment = document.createDocumentFragment();
+    var wordPattern = /[\p{L}\p{N}\p{M}]+/gu;
+    var end = 0;
+    var found;
+    while ((found = wordPattern.exec(line)) !== null) {
+      var folded = fold(found[0]);
+      if (queryWords.some(function (word) { return folded.indexOf(word) === 0; })) {
+        fragment.appendChild(document.createTextNode(line.slice(end, found.index)));
+        var bold = document.createElement("strong");
+        bold.textContent = found[0];
+        fragment.appendChild(bold);
+        end = found.index + found[0].length;
+      }
+    }
+    fragment.appendChild(document.createTextNode(line.slice(end)));
+    return fragment;
+  }
+
   function resultItem(match, queryWords) {
     var entry = match.song.entry;
     var item = document.createElement("li");
@@ -177,7 +215,9 @@
     if (match.rank >= RANK_PHRASE) {
       var line = matchingLine(match.song, queryWords);
       if (line) {
-        item.appendChild(element("span", "result-detail result-line", line));
+        var lineElement = element("span", "result-detail result-line", "");
+        lineElement.appendChild(highlightedLine(line, queryWords));
+        item.appendChild(lineElement);
       }
     }
     return item;
@@ -195,22 +235,46 @@
     status.textContent = text;
   }
 
-  function showResults(found, queryWords) {
-    resultList.replaceChildren.apply(
-      resultList,
-      found.slice(0, MAX_RESULTS).map(function (match) { return resultItem(match, queryWords); })
-    );
-    if (found.length === 0) {
-      showStatus("Nic nenalezeno.");
-    } else if (found.length > MAX_RESULTS) {
-      showStatus(countText(found.length) + ", zobrazeno prvních " + MAX_RESULTS + ". Upřesněte hledání.");
-    } else {
-      showStatus(countText(found.length));
+  /* One group of results: a heading with the number of songs, and the list.
+     A long list is cut short, with a button for the rest. */
+  function resultGroup(group, matches, queryWords) {
+    var section = document.createElement("section");
+    section.className = "result-group";
+    var heading = element("h2", "result-heading", group.title);
+    heading.appendChild(document.createTextNode(SPACE));
+    heading.appendChild(element("span", "result-count", "(" + matches.length + ")"));
+    var list = document.createElement("ul");
+    var items = matches.map(function (match) { return resultItem(match, queryWords); });
+    list.replaceChildren.apply(list, items.slice(0, group.shown));
+    section.appendChild(heading);
+    section.appendChild(list);
+    if (items.length > group.shown) {
+      var more = element("button", "result-more", "Zobrazit všech " + items.length);
+      more.type = "button";
+      more.addEventListener("click", function () {
+        list.replaceChildren.apply(list, items);
+        more.remove();
+        items[group.shown].querySelector("a").focus(); // the first of those just shown
+      });
+      section.appendChild(more);
     }
+    return section;
+  }
+
+  function showResults(found, queryWords) {
+    var groups = [];
+    GROUPS.forEach(function (group) {
+      var matches = found.filter(function (match) { return group.includes(match.rank); });
+      if (matches.length) {
+        groups.push(resultGroup(group, matches, queryWords));
+      }
+    });
+    results.replaceChildren.apply(results, groups);
+    showStatus(found.length ? countText(found.length) : "Nic nenalezeno.");
   }
 
   function clearResults() {
-    resultList.replaceChildren();
+    results.replaceChildren();
   }
 
   function splitWords(query) {
