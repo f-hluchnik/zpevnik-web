@@ -38,6 +38,9 @@ jobs:
       # custom domain is configured in exactly one place.
       - run: python build.py
 
+      # Every song has a page and every link of the site leads somewhere (W7).
+      - run: python check_site.py
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
