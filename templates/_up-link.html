@@ -1,0 +1,5 @@
+{# The way up from a page of one thing to the list it is in, above its title: a
+   muted link that says where it leads. #}
+{% macro up_link(href, text) -%}
+<p class="up-link"><a href="{{ href }}">&larr; {{ text }}</a></p>
+{%- endmacro %}

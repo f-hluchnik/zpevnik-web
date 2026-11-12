@@ -116,7 +116,7 @@ SECTION_DOWNLOAD = "download"
 SECTION_SONGBOOK = "songbook"
 
 # The parts of the songbook, which its own navigation switches between
-# (`songbook_section` of a page); a song belongs to the contents.
+# (`songbook_section` of a page).
 CONTENTS_SECTION = "contents"
 ARTISTS_SECTION = "artists"
 SEARCH_SECTION = "search"
@@ -402,7 +402,9 @@ def render_songbook(document: dict, search_index_url: str) -> None:
     songbook_dir = OUTPUT_DIR / SONGBOOK_URL_PATH.strip("/")
     artists_dir = songbook_dir / ARTISTS_DIRECTORY
 
-    render_page = partial(render, site_section=SECTION_SONGBOOK)
+    # A page of one song or artist marks no item of the songbook's row (`songbook_section`):
+    # it has its own title and a link up to its list.
+    render_page = partial(render, site_section=SECTION_SONGBOOK, songbook_section=None)
 
     render_page("search.html", songbook_dir / SEARCH_DIRECTORY / "index.html",
                 search_index_url=search_index_url, songbook_section=SEARCH_SECTION)
@@ -416,12 +418,11 @@ def render_songbook(document: dict, search_index_url: str) -> None:
                 songbook_section=ARTISTS_SECTION)
     for artist in artists_with_page:
         render_page("artist.html", artists_dir / artist["slug"] / "index.html", artist=artist,
-                    songs=songs_by_id, songbook_section=ARTISTS_SECTION)
+                    songs=songs_by_id)
 
     for previous_song, song, next_song in book_neighbours(songs):
         render_page("song.html", songbook_dir / song["id"] / "index.html", song=song, artists=artists,
-                    previous_song=previous_song, next_song=next_song,
-                    songbook_section=CONTENTS_SECTION)
+                    previous_song=previous_song, next_song=next_song)
 
 
 def search_index_json(document: dict) -> bytes:

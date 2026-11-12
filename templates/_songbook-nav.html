@@ -1,6 +1,7 @@
 {# The navigation inside the online songbook, under the tabs of the site.
-   `songbook_section` is "contents" (the index and the songs), "artists" or
-   "search"; the one the reader is in is marked. #}
+   `songbook_section` is "contents" (the index), "artists" (the list of them) or
+   "search"; the one the reader is in is marked. On the page of one song or
+   artist none is: it has its own title and a link up (_up-link.html). #}
 <nav class="songbook-nav" aria-label="Zpěvník">
   <a href="{{ site.songbook_path }}"{% if songbook_section == "contents" %} aria-current="true"{% endif %}>Písničky</a>
   <a href="{{ site.artists_path }}"{% if songbook_section == "artists" %} aria-current="true"{% endif %}>Interpreti</a>

@@ -142,6 +142,12 @@ are the neighbours in `songs` (book order). A song id may not be `interpret` or
 `hledat` (the build stops), and an artist whose registry entry has no section (`section`
 is false) has no page and is named in plain text.
 
+The page of one song or one artist marks no item of the songbook's row
+(`songbook_section` is `None`): it has its own title and, above it, a muted link
+up to its list ("← Všechny písničky", "← Všichni interpreti",
+`templates/_up-link.html`), so that the row never looks like a "you are here"
+that cannot be clicked.
+
 A song page links its artists and collections, and "otevřít v PDF" opens the
 full book (`zpevnik_last.pdf`) at the song's `page`, which is the PDF page
 index (D-165). `#page=N` is the usual open parameter of browser PDF viewers;
