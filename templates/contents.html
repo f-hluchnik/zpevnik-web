@@ -1,0 +1,21 @@
+{# The index of the online songbook, at <songbook_path>: the letter sections of the
+   contents in the order of the PDF. #}
+{% extends "songbook_base.html" %}
+{% from "_entries.html" import entry_list with context %}
+
+{% block title %}Písničky — {{ site.title }}{% endblock %}
+
+{% block songbook_content %}
+<h1 class="page-title">Písničky</h1>
+<nav class="letters" aria-label="Písmena">
+  {% for section in sections %}
+  <a href="#letter-{{ section.letter }}">{{ section.letter }}</a>
+  {% endfor %}
+</nav>
+{% for section in sections %}
+<section class="letter-section">
+  <h2 id="letter-{{ section.letter }}">{{ section.letter }}</h2>
+  {{ entry_list(section.entries, songs) }}
+</section>
+{% endfor %}
+{% endblock %}

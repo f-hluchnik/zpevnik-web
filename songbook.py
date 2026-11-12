@@ -1,6 +1,7 @@
 """What the online songbook needs from `songs.json` and `scores.zip` besides the
 templates: finding the score images the songs use, checking the links between
-songs, and telling lines of chords from lines of lyrics.
+songs, telling lines of chords from lines of lyrics, and the neighbours of a
+song in the book.
 
 Everything here is a pure function of the data, so it is tested without a build
 (tests/test_songbook.py). The shape of the data is the songbook repository's
@@ -13,7 +14,7 @@ import io
 import re
 import sys
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 
 SCORE_FILE = re.compile(r"[A-Za-z0-9._-]+\.svg")  # the names the schema allows for a score, plus .svg
 
@@ -47,6 +48,22 @@ def is_chord_only_line(line: dict) -> bool:
     return bool(segments) and not any(segment["lyrics"] for segment in segments)
 
 
+def artist_references(song: dict) -> list[tuple[str, str | None]]:
+    """The artists, then the collections, a song belongs to, as (slug, label).
+    The label is the song's own wording of the artist, or None for the registry's."""
+    return [(artist["slug"], artist["label"]) for artist in song["artists"]] + [
+        (slug, None) for slug in song["collections"]
+    ]
+
+
+def book_neighbours(songs: list[dict]) -> Iterator[tuple[dict | None, dict, dict | None]]:
+    """Each song with the one before and the one after it in book order (None at the ends)."""
+    for index, song in enumerate(songs):
+        previous_song = songs[index - 1] if index > 0 else None
+        next_song = songs[index + 1] if index + 1 < len(songs) else None
+        yield previous_song, song, next_song
+
+
 def check_see_links(songs: list[dict]) -> None:
     """Stop the build if a song points to a song that has no page."""
     known = {song["id"] for song in songs}
@@ -75,3 +92,10 @@ def check_scores_present(songs: list[dict], images: dict[str, bytes]) -> None:
     missing = sorted(name for name in score_names(songs) if f"{name}.svg" not in images)
     if missing:
         sys.exit(f"scores.zip lacks the image of: {', '.join(missing)}")
+
+
+def check_free_ids(songs: Iterable[dict], reserved: Iterable[str]) -> None:
+    """Stop the build if a song's page would take the place of a page that is not a song's."""
+    taken = sorted({song["id"] for song in songs} & set(reserved))
+    if taken:
+        sys.exit(f"Song id(s) {', '.join(map(repr, taken))} clash with pages of the online songbook.")

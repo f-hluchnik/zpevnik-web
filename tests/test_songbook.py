@@ -20,8 +20,14 @@ def line(*items):
     return {"groupStart": False, "items": list(items)}
 
 
-def song(song_id, body, see=()):
-    return {"id": song_id, "body": body, "see": [{"id": target, "title": []} for target in see]}
+def song(song_id, body=(), see=(), artists=(), collections=()):
+    return {
+        "id": song_id,
+        "body": list(body),
+        "see": [{"id": target, "title": []} for target in see],
+        "artists": [{"slug": slug, "label": label} for slug, label in artists],
+        "collections": list(collections),
+    }
 
 
 def zip_with(*names):
@@ -78,6 +84,43 @@ class CheckSeeLinksTest(unittest.TestCase):
     def test_stops_at_a_link_to_an_unknown_song(self):
         with self.assertRaisesRegex(SystemExit, "'a'.*'unknown'"):
             songbook.check_see_links([song("a", [], see=["unknown"])])
+
+
+class ArtistReferencesTest(unittest.TestCase):
+    def test_lists_the_artists_and_then_the_collections(self):
+        with_both = song("a", artists=[("abba", None), ("queen", "Q.")], collections=["filmy"])
+        self.assertEqual(
+            songbook.artist_references(with_both),
+            [("abba", None), ("queen", "Q."), ("filmy", None)],
+        )
+
+    def test_a_song_of_nobody_has_none(self):
+        self.assertEqual(songbook.artist_references(song("a")), [])
+
+
+class BookNeighboursTest(unittest.TestCase):
+    def test_pairs_each_song_with_the_ones_around_it(self):
+        a, b, c = song("a"), song("b"), song("c")
+        self.assertEqual(
+            list(songbook.book_neighbours([a, b, c])),
+            [(None, a, b), (a, b, c), (b, c, None)],
+        )
+
+    def test_a_single_song_has_no_neighbours(self):
+        a = song("a")
+        self.assertEqual(list(songbook.book_neighbours([a])), [(None, a, None)])
+
+    def test_no_songs_no_pairs(self):
+        self.assertEqual(list(songbook.book_neighbours([])), [])
+
+
+class CheckFreeIdsTest(unittest.TestCase):
+    def test_accepts_ids_that_clash_with_nothing(self):
+        songbook.check_free_ids([song("a"), song("b")], reserved=["interpret"])
+
+    def test_stops_at_an_id_that_a_page_of_the_songbook_has(self):
+        with self.assertRaisesRegex(SystemExit, "'interpret'"):
+            songbook.check_free_ids([song("a"), song("interpret")], reserved=["interpret"])
 
 
 class ScoreImagesTest(unittest.TestCase):

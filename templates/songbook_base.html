@@ -1,0 +1,15 @@
+{# The frame of every page of the online songbook (D-103, D-167): not offered to
+   search engines, its own stylesheet, and its own navigation. #}
+{% extends "base.html" %}
+
+{% block head %}
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/static/songbook.css">
+{% endblock %}
+
+{% block body_attributes %} class="songbook"{% endblock %}
+
+{% block content %}
+{% include "_songbook-nav.html" %}
+{% block songbook_content %}{% endblock %}
+{% endblock %}
