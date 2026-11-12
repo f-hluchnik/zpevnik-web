@@ -19,7 +19,9 @@ templates/*.html     one file per shape  (see below)
 static/              CSS, JS, icons — copied to dist/static/ as-is
 static/files/        the koledy songbook (the other PDFs are downloaded, see below)
 version.txt          the songbook release this build publishes (written by its CI)
+tests/               unit tests of build.py (standard library only)
 build.py             reads all of the above, writes dist/
+build/               songs.json downloaded from the release; gitignored, not published
 dist/                the entire website; gitignored, rebuilt every run
 ```
 
@@ -87,6 +89,38 @@ a release asset cannot be downloaded or is not a PDF. The koledy songbook is
 not an edition of the songbook: it is a plain file in `static/files/`, replaced
 by hand, keeping its name.
 
+## `songs.json`, the data of the online songbook
+
+The online songbook (W2 onwards) is built from `songs.json`, which the
+songbook repository writes from the same LaTeX files as the PDF and attaches to
+the same release. Every `build.py` run downloads it from the release
+`v<version.txt>` into `build/` (gitignored, and not published: it is 5 MB) and
+checks its `schemaVersion`. Its shape is the contract between the two
+repositories, `tools/songs.schema.json` in the songbook repository; the
+songbook's CI validates the whole file against it before releasing, so this
+build only checks the version it understands (`SUPPORTED_SCHEMA_VERSION`). A
+change of the shape raises that version, and `build.py` has to be updated with
+it.
+
+The build fails, like for a PDF, if the file is missing from the release, is not
+JSON or has another `schemaVersion`.
+
+To work on the site with a `songs.json` that is not released yet (for example
+the `build/songs.json` of a songbook working copy, made by `make json`), name
+the file:
+
+```bash
+python build.py --songs-json ../zpevnik/build/songs.json
+```
+
+## Tests
+
+```bash
+python -m unittest discover tests
+```
+
+CI runs them before the build. They use only the standard library.
+
 ## Previewing locally
 
 ```bash
@@ -96,8 +130,8 @@ python build.py --serve
 ```
 
 Open <http://localhost:8000>. Re-run after any edit — there is no auto-reload,
-which is one less moving part to maintain. Each run downloads the PDFs (about
-6.5 MB) from GitHub, so it needs a network connection.
+which is one less moving part to maintain. Each run downloads the PDFs and
+`songs.json` (about 11 MB) from GitHub, so it needs a network connection.
 
 ## Editing the design
 

@@ -11,8 +11,9 @@ Two kinds of thing:
 
 `build()` reads the content and writes plain HTML into `dist/`. That directory
 is the entire website; it is gitignored and rebuilt from scratch every run.
-The songbook PDFs are not in this repository: every build downloads them from
-the release of the songbook repo named in `version.txt` (see EDITION_DOWNLOADS).
+The songbook PDFs and `songs.json` (the data of the online songbook) are not in
+this repository: every build downloads them from the release of the songbook
+repo named in `version.txt` (see EDITION_DOWNLOADS and SONGS_JSON_ASSET).
 
 Standalone from the blog: nothing is fetched from the blog repo at build time,
 and the two sites look deliberately different. They are linked only by ordinary
@@ -21,15 +22,17 @@ share is the shape of this file: it is a subset of the blog's build.py, with
 the same names in the same order.
 
 Usage:
-    python build.py            # build into dist/
-    python build.py --serve    # build, then serve dist/ on localhost:8000
+    python build.py                          # build into dist/
+    python build.py --serve                  # build, then serve dist/ on localhost:8000
+    python build.py --songs-json FILE        # use a local songs.json, not the release's
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import shutil
 import sys
-import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -53,6 +56,7 @@ PAGES_DIR = ROOT / "content" / "pages"
 TEMPLATES_DIR = ROOT / "templates"
 STATIC_DIR = ROOT / "static"
 OUTPUT_DIR = ROOT / "dist"
+DOWNLOAD_DIR = ROOT / "build"  # release assets used at build time but not published; gitignored
 
 SERVE_ADDRESS = ("localhost", 8000)
 
@@ -63,6 +67,11 @@ SONGBOOK_RELEASE_URL = "https://github.com/f-hluchnik/zpevnik/releases/download/
 DOWNLOAD_TIMEOUT_SECONDS = 60
 PDF_MAGIC = b"%PDF-"
 FILES_URL_PATH = "/static/files/"  # where the PDFs are served; static/files/ holds the koledy book
+
+# The data of the online songbook, the contract between the two repositories
+# (tools/songs.schema.json in the songbook repo). Read at build time only.
+SONGS_JSON_ASSET = "songs.json"
+SUPPORTED_SCHEMA_VERSION = 1
 
 # `extra` is a bundle. The part that matters here is md_in_html, which lets the
 # raw <details markdown="1"> accordions in index.md still render as Markdown;
@@ -225,14 +234,19 @@ def load_pages(version: str) -> list[dict]:
 # --------------------------------------------------------------------------
 
 
-def fetch_pdf(url: str) -> bytes:
-    """Download one PDF, failing loudly: a site without its PDFs must not go live."""
+def download(url: str) -> bytes:
+    """Download one release asset, failing loudly: a site without its data must not go live."""
     try:
         with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
-            content = response.read()
+            return response.read()
     except (urllib.error.URLError, TimeoutError) as error:
         sys.exit(f"Cannot download {url}: {error}\n"
                  "Does the songbook release named in version.txt exist and carry this file?")
+
+
+def fetch_pdf(url: str) -> bytes:
+    """Download one PDF."""
+    content = download(url)
     if not content.startswith(PDF_MAGIC):
         sys.exit(f"{url} is not a PDF.")
     return content
@@ -246,6 +260,33 @@ def fetch_edition_pdfs(version: str) -> dict[str, bytes]:
         )
         for download in EDITION_DOWNLOADS
     }
+
+
+def parse_songs_document(raw: bytes, source: str) -> dict:
+    """The contents of a `songs.json`, checked to be one this build understands."""
+    try:
+        document = json.loads(raw)
+    except json.JSONDecodeError as error:
+        sys.exit(f"{source} is not valid JSON: {error}")
+    schema_version = document.get("schemaVersion") if isinstance(document, dict) else None
+    if schema_version != SUPPORTED_SCHEMA_VERSION:
+        sys.exit(f"{source} has schemaVersion {schema_version!r}, but this build reads only "
+                 f"{SUPPORTED_SCHEMA_VERSION}: update build.py together with the songbook's schema.")
+    return document
+
+
+def load_songs_document(version: str, local_file: Path | None) -> dict:
+    """`songs.json` of the release, or `local_file` when given (for working on a
+    songbook change before it is released)."""
+    if local_file is not None:
+        if not local_file.is_file():
+            sys.exit(f"{local_file} does not exist.")
+        return parse_songs_document(local_file.read_bytes(), str(local_file))
+    url = SONGBOOK_RELEASE_URL.format(version=version, asset=SONGS_JSON_ASSET)
+    raw = download(url)
+    DOWNLOAD_DIR.mkdir(exist_ok=True)
+    (DOWNLOAD_DIR / SONGS_JSON_ASSET).write_bytes(raw)
+    return parse_songs_document(raw, url)
 
 
 # --------------------------------------------------------------------------
@@ -263,13 +304,14 @@ def render(template_name: str, out_path: Path, **context) -> None:
     )
 
 
-def build() -> None:
+def build(songs_json: Path | None = None) -> None:
     # Parse and download before deleting dist/, so a broken page or an
     # unreachable release leaves the previous build in place instead of an
     # empty directory.
     version = read_version()
     pages = load_pages(version)
     edition_pdfs = fetch_edition_pdfs(version)
+    songs = load_songs_document(version, songs_json)["songs"]
 
     if OUTPUT_DIR.exists():
         shutil.rmtree(OUTPUT_DIR)
@@ -293,7 +335,8 @@ def build() -> None:
     # instead of also being hardcoded in the deploy workflow.
     (OUTPUT_DIR / "CNAME").write_text(urlparse(SITE["url"]).netloc + "\n", encoding="utf-8")
 
-    print(f"Built {len(pages)} page(s) and {len(edition_pdfs)} PDF(s) of v{version} -> dist/")
+    print(f"Built {len(pages)} page(s) and {len(edition_pdfs)} PDF(s) of v{version} "
+          f"({len(songs)} songs read) -> dist/")
 
 
 def serve() -> None:
@@ -305,7 +348,16 @@ def serve() -> None:
         print()
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build the songbook site into dist/.")
+    parser.add_argument("--serve", action="store_true", help="serve dist/ on localhost after building")
+    parser.add_argument("--songs-json", type=Path, metavar="FILE",
+                        help="read this songs.json instead of the release's")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    build()
-    if "--serve" in sys.argv:
+    arguments = parse_arguments()
+    build(arguments.songs_json)
+    if arguments.serve:
         serve()

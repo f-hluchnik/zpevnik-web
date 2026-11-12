@@ -32,6 +32,8 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - run: python -m unittest discover tests
+
       # build.py also writes dist/CNAME, derived from SITE["url"], so the
       # custom domain is configured in exactly one place.
       - run: python build.py
