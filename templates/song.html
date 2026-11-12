@@ -1,6 +1,7 @@
 {# One song of the online songbook, at <songbook_path><id>/. D-103, D-167. #}
 {% extends "songbook_base.html" %}
 {% from "_song.html" import text, body_item with context %}
+{% from "_up-link.html" import up_link %}
 
 {# An artist or a collection of the song: a link to its page, when it has one.
    `label` is the song's own wording, if it has one. #}
@@ -18,6 +19,7 @@
 
 {% block songbook_content %}
 <article class="song">
+  {{ up_link(site.songbook_path, "Všechny písničky") }}
   <header class="song-header">
     <h1 class="song-title">{{ text(song.title) }}</h1>
     {% set references = song | artist_references %}

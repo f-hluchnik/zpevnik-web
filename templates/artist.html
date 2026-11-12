@@ -3,13 +3,14 @@
    found by the surname), a collection by what it holds. #}
 {% extends "songbook_base.html" %}
 {% from "_entries.html" import entry_list with context %}
+{% from "_up-link.html" import up_link %}
 
 {% set heading = artist.label if artist.kind == "artist" else artist.name %}
 
 {% block title %}{{ heading }} — {{ site.title }}{% endblock %}
 
 {% block songbook_content %}
+{{ up_link(site.artists_path, "Všichni interpreti") }}
 <h1 class="page-title">{{ heading }}</h1>
 {{ entry_list(artist.entries, songs) }}
-<p class="back-link"><a href="{{ site.artists_path }}">&larr; Všichni interpreti</a></p>
 {% endblock %}

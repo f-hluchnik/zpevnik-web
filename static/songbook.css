@@ -39,6 +39,11 @@
 
 .song-subtitle { font-style: italic; color: var(--ink); }
 
+/* The way up to the list, above the title. */
+.up-link { margin: 0 0 1rem; font-size: 0.95rem; }
+.up-link a { color: var(--muted); text-decoration: none; }
+.up-link a:hover { color: var(--accent); }
+
 /* The scale is set on <html> by songbook.js; 1 is the size of the book. */
 .song-body {
   margin-top: 1.5rem;
