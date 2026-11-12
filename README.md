@@ -211,6 +211,16 @@ hyphen, in the book and here.
 **The font size** buttons (`static/songbook.js`) are hidden without JavaScript;
 the choice is remembered in the browser. The song reads the same without them.
 
+**Keep the screen on** (`static/wake-lock.js`, D-174): the button *Nezhasínat
+displej* on a song uses the Screen Wake Lock API. It is hidden without
+JavaScript and where the browser has no such API (it needs https, or
+`localhost`). The browser drops the lock when the page is hidden, so the script
+asks again when the page is shown. The choice is kept for the tab
+(`sessionStorage`) and the next song takes it over; a closed tab forgets it. If
+the browser refuses (low battery, or a request that is not from a tap, which
+Safari has done), the button goes back to off. Tried with Chromium and a
+replacement of the API; not on a real phone. There are no automated tests.
+
 **An unknown song** (`/zpivej/<anything else>`) gets `404.html`, as every path
 GitHub Pages cannot match does; `python build.py --serve` does the same.
 
