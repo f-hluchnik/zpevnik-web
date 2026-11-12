@@ -91,6 +91,11 @@ SUPPORTED_SCHEMA_VERSION = 1
 SCORES_ASSET = "scores.zip"  # the score images (SVG) the songs show
 SCORES_URL_PATH = "/static/scores/"  # where they are served
 
+# robots.txt (D-006, W6): no crawler is asked to read any of the site, and there
+# is no sitemap (the legal hygiene of the songs, WP7).
+ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
+ROBOTS_FILE_NAME = "robots.txt"
+
 # Where the online songbook is served (D-167): the index at <path>, a song at
 # <path><id>/, the list of artists at <path>interpret/, an artist or a
 # collection at <path>interpret/<slug>/ (D-103, D-168) and the search at
@@ -474,6 +479,8 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     scores_dir.mkdir(parents=True)
     for file_name, content in score_images.items():
         (scores_dir / file_name).write_bytes(content)
+
+    (OUTPUT_DIR / ROBOTS_FILE_NAME).write_text(ROBOTS_TXT, encoding="utf-8")
 
     # Derived from SITE["url"], so the domain is configured in one place
     # instead of also being hardcoded in the deploy workflow.

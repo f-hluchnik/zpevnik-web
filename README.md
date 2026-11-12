@@ -281,6 +281,10 @@ site is only ever going to be in Czech.
 but publishes to GitHub Pages only from `main`. A branch or a pull request
 therefore tells you the site still builds, without touching what is live.
 
+`dist/robots.txt` (`ROBOTS_TXT` in `build.py`, D-006) asks every crawler to read
+nothing, and there is no sitemap. The songbook's own pages also carry
+`noindex`; the download page does not, as `Disallow` already covers it.
+
 The custom domain is derived from `SITE["url"]` — `build.py` writes
 `dist/CNAME` from it, so the domain is configured in exactly one place. In the
 repo's **Settings → Pages**, set **Source** to **GitHub Actions**, then point
