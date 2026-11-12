@@ -17,6 +17,7 @@ Nothing is shared at build time; the blog links to this site from its
 content/pages/*.md   one file per page   (index.md is the front page)
 templates/*.html     one file per shape  (see below)
 songbook.py          helpers of the song pages (tested in tests/)
+check_site.py        the check of the built site: song pages present, links resolve
 static/              CSS, JS, icons — copied to dist/static/ as-is
 static/files/        the koledy songbook (the other PDFs are downloaded, see below)
 version.txt          the songbook release this build publishes (written by its CI)
@@ -231,6 +232,21 @@ python -m unittest discover tests
 ```
 
 CI runs them before the build. They use only the standard library.
+
+## The check of the built site
+
+```bash
+python build.py && python check_site.py
+```
+
+`check_site.py` (W7) reads `dist/` and fails when a song of `songs.json` has no
+page, or when a link, script, style sheet, image or form of any page leads to a
+file or an `#anchor` the site does not have (query strings such as `?v=` are
+ignored; links with a scheme, like `https:`, and what the style sheets name are
+not checked). CI runs it after the build, so a page that links to nothing never
+goes live. It cannot say that a page looks right: before a release look at a few
+songs on a phone-sized screen (390 px), a dense one such as `folsomprisonblues`,
+one with a score (`batalion`) and one in two columns (`cernymuz`), in both themes.
 
 ## Previewing locally
 
