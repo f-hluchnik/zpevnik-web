@@ -53,9 +53,19 @@
   line-height: 1.35;
 }
 
-/* The font size buttons and the toggle of the screen; hidden until songbook.js
-   and wake-lock.js show them. The toggle is filled while it is on, as the
-   marked tab of the site is. */
+/* The font size buttons and the toggle of the screen (an icon), one small group;
+   hidden until songbook.js and wake-lock.js show them. The toggle is filled
+   while it is on, as the marked tab of the site is. */
+.song-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* The icon is as tall as a line of the buttons beside it (every browser with
+   the Wake Lock API knows the `lh` unit). */
+.wake-lock-toggle svg { display: block; width: 1.1em; height: 1lh; margin: 0 auto; }
+
 .font-size-control button,
 .wake-lock-toggle {
   min-width: 2rem;
