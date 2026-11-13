@@ -29,40 +29,27 @@
 {%- endfor -%}
 {%- endmacro %}
 
-{# A chord and the text under it (D-123, D-176). The chord's column holds the head
-   of the text, the shortest run of whole words that covers the chord; the tail
-   flows after it and wraps at any space, as the book's lines do. Text with no
-   chord flows too. `endsInWord`: the next chord is inside the word. Text that
-   flows gets a soft hyphen there, so a line that breaks there shows a hyphen as
-   the book does; a column goes to the next row together with the next column
-   (word_groups), and its gap holds a hyphen when it is wide enough. #}
-{% macro column(item) -%}
-{%- set head, tail = item | split_head -%}
-<span class="segment{% if not item.lyrics %} chord-run{% endif %}"><span class="chord">{{ chord(item.chord) }}</span><span class="lyrics">
-{%- if item.endsInWord and not tail -%}
-  <span class="lyrics-text">{{ text(head) }}</span><span class="hyphen-room"><span class="hyphen"></span></span>
-{%- else -%}{{ text(head) }}{%- endif -%}
+{# The pieces of a line (songbook.layout_line, D-123, D-176): a chord and the head
+   of its text in a column, text that flows and wraps at its spaces, a group of
+   columns that share a word, and marks. #}
+{% macro column(piece) -%}
+<span class="segment{% if piece.chord_run %} chord-run{% endif %}"><span class="chord">{{ chord(piece.chord) }}</span><span class="lyrics">
+{%- if piece.hyphen_room -%}
+  <span class="lyrics-text">{{ text(piece.text) }}</span><span class="hyphen-room"><span class="hyphen"></span></span>
+{%- else -%}{{ text(piece.text) }}{%- endif -%}
 </span></span>
 {%- endmacro %}
 
-{% macro flow(parts, ends_in_word) -%}
-<span class="flow">{{ text(parts) }}{% if ends_in_word %}&shy;{% endif %}</span>
-{%- endmacro %}
-
-{% macro tail(item) -%}
-{%- set head, tail = item | split_head -%}
-{%- if tail -%}{{ flow(tail, item.endsInWord) }}{%- endif -%}
-{%- endmacro %}
-
-{% macro segment(item) -%}
-{%- if item.chord -%}{{ column(item) }}{{ tail(item) }}
-{%- else -%}{{ flow(item.lyrics, item.endsInWord) }}{%- endif -%}
+{% macro line_piece(piece) -%}
+{%- if piece.kind == "column" -%}{{ column(piece) }}
+{%- elif piece.kind == "word" -%}<span class="word">{% for item in piece.columns %}{{ column(item) }}{% endfor %}</span>
+{%- elif piece.kind == "flow" -%}<span class="flow">{{ text(piece.text) }}{% if piece.soft_hyphen %}&shy;{% endif %}</span>
+{%- else -%}{{ mark(piece.item) }}{%- endif -%}
 {%- endmacro %}
 
 {# The things on a line between and beside the segments. #}
-{% macro line_item(item) -%}
-{%- if item.type == "segment" -%}{{ segment(item) }}
-{%- elif item.type == "repeatStart" -%}<span class="repeat">\:</span>
+{% macro mark(item) -%}
+{%- if item.type == "repeatStart" -%}<span class="repeat">\:</span>
 {%- elif item.type == "repeatEnd" -%}<span class="repeat">:\</span>
 {%- elif item.type == "cue" -%}<span class="cue">{{ item.label }}</span>
 {%- elif item.type == "note" -%}<span class="note">{{ text(item.content) }}</span>
@@ -71,15 +58,10 @@
 {%- endif -%}
 {%- endmacro %}
 
-{# A line of chords only is set in the text row, as in the book. A word split by
-   chords between columns is one group (word_groups) that moves to the next row whole. #}
+{# A line of chords only is set in the text row, as in the book. #}
 {% macro line(item) -%}
 <div class="line{% if item is chord_only %} chords-only{% endif %}{% if item.groupStart %} group-start{% endif %}">
-{%- for group in item["items"] | word_groups -%}
-  {%- if group | length > 1 -%}
-    <span class="word">{% for part in group %}{{ column(part) }}{% endfor %}</span>{{ tail(group[-1]) }}
-  {%- else -%}{{ line_item(group[0]) }}{%- endif -%}
-{%- endfor -%}
+{%- for piece in item["items"] | layout_line -%}{{ line_piece(piece) }}{%- endfor -%}
 </div>
 {%- endmacro %}
 

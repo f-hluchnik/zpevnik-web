@@ -209,8 +209,9 @@ build knows no widths); the rest of the text, and text with no chord, flows and
 wraps at any space, as the book's lines do. A guess that is too short widens a
 space after the column, never lets chords collide. Where a chord stands inside
 a word, flowing text ends in a soft hyphen, so a line may break there with a
-hyphen as in the book; two columns that share a word are one inline-block
-(`word_groups`), which goes to the next row whole.
+hyphen as in the book; two columns that share a word are one inline-block,
+which goes to the next row whole. `layout_line` decides these pieces of a line
+once, in Python; the template only draws them.
 One difference from the book: where a chord stands inside a word, the book
 widens the gap to hold a hyphen. CSS cannot widen it only then, so the hyphen
 is shown if the gap, which the chord's width makes, is at least 0.4 em wide,
