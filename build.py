@@ -88,7 +88,7 @@ FILES_URL_PATH = "/static/files/"  # where the PDFs are served; static/files/ ho
 # The data of the online songbook, the contract between the two repositories
 # (tools/songs.schema.json in the songbook repo). Read at build time only.
 SONGS_JSON_ASSET = "songs.json"
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSION = 2
 SCORES_ASSET = "scores.zip"  # the score images (SVG) the songs show
 SCORES_URL_PATH = "/static/scores/"  # where they are served
 

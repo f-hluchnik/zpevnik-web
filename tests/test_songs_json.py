@@ -26,7 +26,7 @@ class ParseSongsDocumentTest(unittest.TestCase):
 
     def test_rejects_another_schema_version(self):
         with self.assertRaisesRegex(SystemExit, "schemaVersion"):
-            build.parse_songs_document(songs_document(schemaVersion=2), "test")
+            build.parse_songs_document(songs_document(schemaVersion=build.SUPPORTED_SCHEMA_VERSION + 1), "test")
 
     def test_rejects_a_missing_schema_version(self):
         with self.assertRaisesRegex(SystemExit, "schemaVersion"):

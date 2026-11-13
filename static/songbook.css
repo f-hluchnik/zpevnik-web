@@ -205,7 +205,8 @@
 
 .columns-2 { column-count: 2; column-gap: 2.5rem; }
 
-.song-note {
+.song-note,
+.song-remark {
   margin: 1.1em 0 0 calc(var(--label-width) + 0.5em);
   font-style: italic;
 }
