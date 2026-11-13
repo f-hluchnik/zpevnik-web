@@ -1,7 +1,8 @@
 """What the online songbook needs from `songs.json` and `scores.zip` besides the
 templates: finding the score images the songs use, checking the links between
-songs, telling lines of chords from lines of lyrics, the neighbours of a song in
-the book, and what the search looks through.
+songs, telling lines of chords from lines of lyrics, the pieces a line is drawn
+from (how much of a chord's text stands in its column), the neighbours of a
+song in the book, and what the search looks through.
 
 Everything here is a pure function of the data, so it is tested without a build
 (tests/test_songbook.py). The shape of the data is the songbook repository's
@@ -11,12 +12,24 @@ tools/songs.schema.json.
 from __future__ import annotations
 
 import io
+import math
 import re
 import sys
 import zipfile
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from typing import ClassVar
 
 SCORE_FILE = re.compile(r"[A-Za-z0-9._-]+\.svg")  # the names the schema allows for a score, plus .svg
+
+# How much text a chord's column holds (split_head, D-176). The build knows
+# characters, not widths, so these are estimates; one that is too short only
+# widens a space after the head, it never lets two chords collide.
+CHORD_LETTER_WIDTH = 1.3   # a bold chord letter is about 1.3 letters of the text; a raised
+                           # "7" counts as a whole one, which only lengthens the head a little
+SEPARATOR_CHARACTERS = 2   # --chord-sep (0.5 em) is about one letter; with one more, a head
+                           # that is too short is rare (104 of 7,800 instead of 558, D-176)
+EM_PER_CHARACTER = 0.5     # the book's unit: \gap{n} is n characters of 0.5 em (D-123)
 
 
 def body_lines(song: dict) -> Iterator[dict]:
@@ -46,6 +59,126 @@ def is_chord_only_line(line: dict) -> bool:
     would leave an empty row under it."""
     segments = [item for item in line["items"] if item["type"] == "segment"]
     return bool(segments) and not any(segment["lyrics"] for segment in segments)
+
+
+def chord_head_length(chord: list[dict]) -> int:
+    """How many characters of text cover a chord and the separator after it."""
+    characters = sum(len(part["text"]) for part in chord)
+    return math.ceil(characters * CHORD_LETTER_WIDTH) + SEPARATOR_CHARACTERS
+
+
+def has_words(parts: Iterable[dict]) -> bool:
+    """Whether a text has a word in it, not only spaces, pauses or marks."""
+    return any(part["type"] == "run" and part["text"].strip() for part in parts)
+
+
+def split_run(part: dict, offset: int) -> tuple[list[dict], list[dict]]:
+    """A run cut at `offset` into the runs before and after it (none where empty)."""
+    before, after = part["text"][:offset], part["text"][offset:]
+    return ([{**part, "text": before}] if before else []), ([{**part, "text": after}] if after else [])
+
+
+def split_head(chord: list[dict], lyrics: list[dict]) -> tuple[list[dict], list[dict]]:
+    """The text under a chord cut into the head, which stands in the chord's
+    column, and the tail, which flows after it (D-176).
+
+    The head is the shortest run of whole words that covers the chord
+    (`chord_head_length`): the text is cut at a space (not a no-break space),
+    and the tail starts with that space and has a word in it. A text that is
+    not longer than that is all head, and the tail is empty. A pause counts by
+    its length, a footnote mark not at all. The column is still
+    max(head, chord + separator), so a guess that is too short widens a space
+    but never lets two chords collide (D-123).
+    """
+    needed = chord_head_length(chord)
+    length = 0.0
+    for index, part in enumerate(lyrics):
+        if part["type"] == "gap":
+            length += part["em"] / EM_PER_CHARACTER
+        if part["type"] != "run":
+            continue
+        for offset, character in enumerate(part["text"]):
+            if character == " " and length >= needed:
+                head_end, tail_start = split_run(part, offset)
+                tail = tail_start + lyrics[index + 1:]
+                if has_words(tail):
+                    return lyrics[:index] + head_end, tail
+            length += 1
+    return lyrics, []
+
+
+# The pieces a line of a song is drawn from (layout_line); the template draws
+# each by its `kind`.
+
+@dataclass(frozen=True)
+class Column:
+    """A chord and the head of its text, as wide as the wider of the two."""
+    kind: ClassVar[str] = "column"
+    chord: list[dict]
+    text: list[dict]
+    hyphen_room: bool  # the text ends inside a word: the gap after it may hold a hyphen
+    chord_run: bool    # no text under the chord: the next chord is farther away
+
+
+@dataclass(frozen=True)
+class Word:
+    """Columns that share a word: they go to the next row together, as a hyphen
+    cannot be shown at a break between them."""
+    kind: ClassVar[str] = "word"
+    columns: tuple[Column, ...]
+
+
+@dataclass(frozen=True)
+class Flow:
+    """Text outside a column, which wraps at its spaces: the tail of a chord's
+    text, or text with no chord. Where it ends inside a word, a soft hyphen
+    lets the line break there with a hyphen, as the book's does."""
+    kind: ClassVar[str] = "flow"
+    text: list[dict]
+    soft_hyphen: bool
+
+
+@dataclass(frozen=True)
+class Mark:
+    """Anything else on a line (a repeat sign, a cue, a note, a speaker, a score)."""
+    kind: ClassVar[str] = "mark"
+    item: dict
+
+
+Piece = Column | Word | Flow | Mark
+
+
+def layout_line(items: list[dict]) -> list[Piece]:
+    """The pieces of a line of a song (D-176): each chord with the head of its
+    text in a column and the tail flowing after it; text without a chord
+    flowing; columns that share a word in one group."""
+    pieces: list[Piece] = []
+    word: list[Column] = []  # columns of a word that goes on in the next column
+
+    def place_word() -> None:
+        if word:
+            pieces.append(word[0] if len(word) == 1 else Word(tuple(word)))
+            word.clear()
+
+    for item in items:
+        if item["type"] != "segment":
+            place_word()
+            pieces.append(Mark(item))
+            continue
+        if item["chord"] is None:
+            place_word()
+            pieces.append(Flow(item["lyrics"], soft_hyphen=item["endsInWord"]))
+            continue
+        head, tail = split_head(item["chord"], item["lyrics"])
+        word.append(Column(item["chord"], head, hyphen_room=item["endsInWord"] and not tail,
+                           chord_run=not item["lyrics"]))
+        if item["endsInWord"] and not tail:
+            continue
+        place_word()
+        if tail:
+            pieces.append(Flow(tail, soft_hyphen=item["endsInWord"]))
+    place_word()
+    return pieces
 
 
 def plain_text(parts: list[dict]) -> str:

@@ -59,6 +59,7 @@ from songbook import (
     check_scores_present,
     check_see_links,
     is_chord_only_line,
+    layout_line,
     read_score_images,
     search_entry,
 )
@@ -198,6 +199,7 @@ env = Environment(
     lstrip_blocks=True,
 )
 env.tests["chord_only"] = is_chord_only_line
+env.filters["layout_line"] = layout_line
 env.filters["artist_references"] = artist_references
 
 

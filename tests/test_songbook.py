@@ -201,5 +201,96 @@ class ScoreImagesTest(unittest.TestCase):
             songbook.check_scores_present(songs, {})
 
 
+
+def chord_segment(chord, *parts, ends_in_word=False):
+    return {"type": "segment", "chord": chord, "lyrics": list(parts), "endsInWord": ends_in_word}
+
+
+E7 = [{"text": "E", "position": "base"}, {"text": "7", "position": "superscript"}]  # covered by 5 characters
+
+
+class ChordHeadLengthTest(unittest.TestCase):
+    def test_counts_every_part_of_the_chord_as_wider_letters_and_adds_the_separator(self):
+        self.assertEqual(songbook.chord_head_length(CHORD), 4)  # ceil(1 × 1.3) + 2
+        self.assertEqual(songbook.chord_head_length(E7), 5)  # ceil(2 × 1.3) + 2
+
+
+class SplitHeadTest(unittest.TestCase):
+    def test_the_head_is_the_shortest_run_of_whole_words_that_covers_the_chord(self):
+        self.assertEqual(songbook.split_head(E7, [run("I don’t know when.")]),
+                         ([run("I don’t")], [run(" know when.")]))
+
+    def test_a_text_that_does_not_reach_past_the_chord_is_all_head(self):
+        self.assertEqual(songbook.split_head(E7, [run("I don’t ")]), ([run("I don’t ")], []))
+
+    def test_a_text_without_spaces_is_all_head(self):
+        self.assertEqual(songbook.split_head(CHORD, [run("Antone.")]), ([run("Antone.")], []))
+
+    def test_a_no_break_space_does_not_cut(self):
+        self.assertEqual(songbook.split_head(CHORD, [run("seven two")]), ([run("seven two")], []))
+
+    def test_the_tail_starts_with_the_space_and_keeps_the_style(self):
+        italic = {"type": "run", "text": "seven two", "style": ["italic"]}
+        self.assertEqual(songbook.split_head(CHORD, [italic]),
+                         ([{**italic, "text": "seven"}], [{**italic, "text": " two"}]))
+
+    def test_the_cut_may_fall_between_runs_and_takes_the_later_parts_along(self):
+        head, tail = songbook.split_head(CHORD, [run("I"), run("t is"), run(" so "), FOOTNOTE, run("now")])
+        self.assertEqual(head, [run("I"), run("t is")])
+        self.assertEqual(tail, [run(" so "), FOOTNOTE, run("now")])
+
+    def test_a_pause_counts_by_its_length_and_a_footnote_mark_not_at_all(self):
+        self.assertEqual(songbook.split_head(CHORD, [GAP, run("ab c")])[0], [GAP, run("ab")])  # the pause is 2 characters
+        self.assertEqual(songbook.split_head(CHORD, [FOOTNOTE, run("ab cd e")])[0], [FOOTNOTE, run("ab cd")])
+
+    def test_a_tail_without_a_word_is_no_tail(self):
+        lyrics = [run("seven "), GAP, FOOTNOTE]
+        self.assertEqual(songbook.split_head(CHORD, lyrics), (lyrics, []))
+
+
+def column(chord, *text, hyphen_room=False):
+    return songbook.Column(chord, list(text), hyphen_room=hyphen_room, chord_run=not text)
+
+
+class LayoutLineTest(unittest.TestCase):
+    def test_a_chord_s_text_is_a_column_and_a_tail_that_flows(self):
+        self.assertEqual(songbook.layout_line([chord_segment(E7, run("I don’t know when."))]),
+                         [column(E7, run("I don’t")), songbook.Flow([run(" know when.")], soft_hyphen=False)])
+
+    def test_text_without_a_chord_flows(self):
+        self.assertEqual(songbook.layout_line([chord_segment(None, run("I "))]),
+                         [songbook.Flow([run("I ")], soft_hyphen=False)])
+
+    def test_a_chord_without_text_is_a_chord_run_column(self):
+        self.assertEqual(songbook.layout_line([chord_segment(CHORD)]), [column(CHORD)])
+
+    def test_columns_that_share_a_word_are_one_group(self):
+        pieces = songbook.layout_line([chord_segment(CHORD, run("ko"), ends_in_word=True),
+                                       chord_segment(CHORD, run("lo"), ends_in_word=True),
+                                       chord_segment(CHORD, run("toč na"))])
+        self.assertEqual(pieces, [songbook.Word((column(CHORD, run("ko"), hyphen_room=True),
+                                                 column(CHORD, run("lo"), hyphen_room=True),
+                                                 column(CHORD, run("toč na"))))])
+
+    def test_the_tail_of_the_last_column_of_a_group_flows_after_the_group(self):
+        pieces = songbook.layout_line([chord_segment(CHORD, run("fee"), ends_in_word=True),
+                                       chord_segment(CHORD, run("lin’ blue,"))])
+        self.assertEqual(pieces, [songbook.Word((column(CHORD, run("fee"), hyphen_room=True),
+                                                 column(CHORD, run("lin’")))),
+                                  songbook.Flow([run(" blue,")], soft_hyphen=False)])
+
+    def test_text_that_flows_into_the_next_chord_s_word_gets_a_soft_hyphen(self):
+        pieces = songbook.layout_line([chord_segment(None, run("Buongiorno I"), ends_in_word=True),
+                                       chord_segment(CHORD, run("seven klo"), ends_in_word=True),
+                                       chord_segment(CHORD, run("bouk"))])
+        self.assertEqual(pieces, [songbook.Flow([run("Buongiorno I")], soft_hyphen=True),
+                                  column(CHORD, run("seven")), songbook.Flow([run(" klo")], soft_hyphen=True),
+                                  column(CHORD, run("bouk"))])
+
+    def test_a_mark_ends_a_group_and_stays_as_it_is(self):
+        fee = chord_segment(CHORD, run("fee"), ends_in_word=True)
+        self.assertEqual(songbook.layout_line([fee, SCORE]),
+                         [column(CHORD, run("fee"), hyphen_room=True), songbook.Mark(SCORE)])
+
 if __name__ == "__main__":
     unittest.main()

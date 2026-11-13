@@ -29,22 +29,27 @@
 {%- endfor -%}
 {%- endmacro %}
 
-{# A chord and the text under it. `endsInWord`: the next chord is inside the word,
-   so the gap before it holds a hyphen when it is wide enough. #}
-{% macro segment(item) -%}
-<span class="segment{% if item.chord and not item.lyrics %} chord-run{% endif %}">
-{%- if item.chord -%}<span class="chord">{{ chord(item.chord) }}</span>{%- endif -%}
-<span class="lyrics">
-{%- if item.endsInWord -%}
-  <span class="lyrics-text">{{ text(item.lyrics) }}</span><span class="hyphen-room"><span class="hyphen"></span></span>
-{%- else -%}{{ text(item.lyrics) }}{%- endif -%}
+{# The pieces of a line (songbook.layout_line, D-123, D-176): a chord and the head
+   of its text in a column, text that flows and wraps at its spaces, a group of
+   columns that share a word, and marks. #}
+{% macro column(piece) -%}
+<span class="segment{% if piece.chord_run %} chord-run{% endif %}"><span class="chord">{{ chord(piece.chord) }}</span><span class="lyrics">
+{%- if piece.hyphen_room -%}
+  <span class="lyrics-text">{{ text(piece.text) }}</span><span class="hyphen-room"><span class="hyphen"></span></span>
+{%- else -%}{{ text(piece.text) }}{%- endif -%}
 </span></span>
 {%- endmacro %}
 
+{% macro line_piece(piece) -%}
+{%- if piece.kind == "column" -%}{{ column(piece) }}
+{%- elif piece.kind == "word" -%}<span class="word">{% for item in piece.columns %}{{ column(item) }}{% endfor %}</span>
+{%- elif piece.kind == "flow" -%}<span class="flow">{{ text(piece.text) }}{% if piece.soft_hyphen %}&shy;{% endif %}</span>
+{%- else -%}{{ mark(piece.item) }}{%- endif -%}
+{%- endmacro %}
+
 {# The things on a line between and beside the segments. #}
-{% macro line_item(item) -%}
-{%- if item.type == "segment" -%}{{ segment(item) }}
-{%- elif item.type == "repeatStart" -%}<span class="repeat">\:</span>
+{% macro mark(item) -%}
+{%- if item.type == "repeatStart" -%}<span class="repeat">\:</span>
 {%- elif item.type == "repeatEnd" -%}<span class="repeat">:\</span>
 {%- elif item.type == "cue" -%}<span class="cue">{{ item.label }}</span>
 {%- elif item.type == "note" -%}<span class="note">{{ text(item.content) }}</span>
@@ -56,7 +61,7 @@
 {# A line of chords only is set in the text row, as in the book. #}
 {% macro line(item) -%}
 <div class="line{% if item is chord_only %} chords-only{% endif %}{% if item.groupStart %} group-start{% endif %}">
-{%- for part in item["items"] -%}{{ line_item(part) }}{%- endfor -%}
+{%- for piece in item["items"] | layout_line -%}{{ line_piece(piece) }}{%- endfor -%}
 </div>
 {%- endmacro %}
 
