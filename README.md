@@ -198,11 +198,19 @@ pages; they look like tabs but are not ARIA tabs. `404.html` links to the
 index as well.
 
 **The chord rule** (D-123) is in `songbook.css`, and needs no JavaScript. A
-chord and its text are an inline-block, as wide as the wider of the text and
-the chord plus 0.5 em (the chord's padding); chords without text are 1 em
-apart; a pause (`gap`) is a fixed space whose width in em comes from the data.
-The spaces of the text are kept (`white-space: pre-wrap`). A line of chords
-only is set in the line of text, as in the book.
+chord and the first words of its text are an inline-block, as wide as the wider
+of those words and the chord plus 0.5 em (the chord's padding); chords without
+text are 1 em apart; a pause (`gap`) is a fixed space whose width in em comes
+from the data. The spaces of the text are kept (`white-space: pre-wrap`). A
+line of chords only is set in the line of text, as in the book.
+**Wrapping** (D-176): only the shortest run of whole words that covers the chord
+stands in its column (`split_head` in `songbook.py`, from character counts: the
+build knows no widths); the rest of the text, and text with no chord, flows and
+wraps at any space, as the book's lines do. A guess that is too short widens a
+space after the column, never lets chords collide. Where a chord stands inside
+a word, flowing text ends in a soft hyphen, so a line may break there with a
+hyphen as in the book; two columns that share a word are one inline-block
+(`word_groups`), which goes to the next row whole.
 One difference from the book: where a chord stands inside a word, the book
 widens the gap to hold a hyphen. CSS cannot widen it only then, so the hyphen
 is shown if the gap, which the chord's width makes, is at least 0.4 em wide,

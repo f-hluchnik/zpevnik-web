@@ -4,6 +4,8 @@
 
    The chord rule is the songbook's (D-123, zpevnik.sty):
      * a chord and its text take max(text width, chord width + --chord-sep);
+       the text wraps at its spaces, as in the book: only its first words, as
+       many as cover the chord, stand in the chord's column (D-176);
      * two chords with no text between them: chord width + --chord-run-sep;
      * a pause is a fixed gap, given in em;
      * a gap that splits a word holds a hyphen, when it is wide enough.
@@ -74,9 +76,11 @@
 .line { margin: 0; }
 .line.group-start { margin-top: 0.9em; }
 
-/* A chord and its text: a column that is as wide as the wider of the two. The
-   chord's padding is the separator, so the column is max(text, chord + sep).
-   Inline-blocks line up on the baseline of their last row, the text. */
+/* A chord and the head of its text: a column that is as wide as the wider of
+   the two. The chord's padding is the separator, so the column is
+   max(text, chord + sep). Inline-blocks line up on the baseline of their last
+   row, the text. The build puts in the column only as many words as cover the
+   chord (D-176); the rest of the text flows after it (.flow). */
 .segment {
   display: inline-block;
   vertical-align: baseline;
@@ -99,6 +103,15 @@
   display: block;
   white-space: pre-wrap;
 }
+
+/* Text outside a column: the tail of a chord's text, or text with no chord.
+   It wraps at any space, and keeps the song's spaces as the columns do. */
+.flow { white-space: pre-wrap; }
+
+/* A word split by chords between two columns: a hyphen cannot be shown at a
+   break between them, so the columns go to the next row together. Only a group
+   wider than the whole row breaks inside, rather than run off the screen. */
+.word { display: inline-block; }
 
 /* An empty text still has its row, so that the chord stands above the baseline. */
 .lyrics:empty::before { content: "\200b"; }

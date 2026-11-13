@@ -201,5 +201,82 @@ class ScoreImagesTest(unittest.TestCase):
             songbook.check_scores_present(songs, {})
 
 
+def chord_segment(chord, *parts):
+    return {"type": "segment", "chord": chord, "lyrics": list(parts), "endsInWord": False}
+
+
+E7 = [{"text": "E", "position": "base"}, {"text": "7", "position": "superscript"}]  # covered by 5 characters
+
+
+class ChordHeadLengthTest(unittest.TestCase):
+    def test_counts_every_part_of_the_chord_as_wider_letters_and_adds_the_separator(self):
+        self.assertEqual(songbook.chord_head_length(CHORD), 4)  # ceil(1 × 1.3) + 2
+        self.assertEqual(songbook.chord_head_length(E7), 5)  # ceil(2 × 1.3) + 2
+
+
+class SplitHeadTest(unittest.TestCase):
+    def test_the_head_is_the_shortest_run_of_whole_words_that_covers_the_chord(self):
+        head, tail = songbook.split_head(chord_segment(E7, run("I don’t know when.")))
+        self.assertEqual((head, tail), ([run("I don’t")], [run(" know when.")]))
+
+    def test_a_text_that_does_not_reach_past_the_chord_is_all_head(self):
+        segment = chord_segment(E7, run("I don’t "))
+        self.assertEqual(songbook.split_head(segment), (segment["lyrics"], []))
+
+    def test_a_text_without_spaces_is_all_head(self):
+        segment = chord_segment(CHORD, run("Antone."))
+        self.assertEqual(songbook.split_head(segment), (segment["lyrics"], []))
+
+    def test_the_tail_starts_with_the_space_and_keeps_the_style(self):
+        italic = {"type": "run", "text": "seven two", "style": ["italic"]}
+        head, tail = songbook.split_head(chord_segment(CHORD, italic))
+        self.assertEqual(head, [{**italic, "text": "seven"}])
+        self.assertEqual(tail, [{**italic, "text": " two"}])
+
+    def test_the_cut_may_fall_between_runs_and_takes_the_later_parts_along(self):
+        head, tail = songbook.split_head(chord_segment(CHORD, run("I"), run("t is"), run(" so "), FOOTNOTE, run("now")))
+        self.assertEqual(head, [run("I"), run("t is")])
+        self.assertEqual(tail, [run(" so "), FOOTNOTE, run("now")])
+
+    def test_a_pause_counts_by_its_length_and_a_footnote_mark_not_at_all(self):
+        head, _ = songbook.split_head(chord_segment(CHORD, GAP, run("ab c")))  # the pause is 2 characters
+        self.assertEqual(head, [GAP, run("ab")])
+        head, _ = songbook.split_head(chord_segment(CHORD, FOOTNOTE, run("ab cd e")))
+        self.assertEqual(head, [FOOTNOTE, run("ab cd")])
+
+    def test_a_tail_without_a_word_is_no_tail(self):
+        segment = chord_segment(CHORD, run("one "), GAP, FOOTNOTE)
+        self.assertEqual(songbook.split_head(segment), (segment["lyrics"], []))
+
+    def test_a_text_without_a_chord_is_all_head(self):
+        segment = chord_segment(None, run("but that train keeps a-rollin’"))
+        self.assertEqual(songbook.split_head(segment), (segment["lyrics"], []))
+
+
+def in_word(item):
+    return {**item, "endsInWord": True}
+
+
+class WordGroupsTest(unittest.TestCase):
+    def test_a_column_that_ends_inside_a_word_is_grouped_with_the_next_segment(self):
+        fee, lin, blue = in_word(chord_segment(CHORD, run("fee"))), chord_segment(CHORD, run("lin’ ")), chord_segment(CHORD, run("blue"))
+        self.assertEqual(songbook.word_groups([fee, lin, blue]), [[fee, lin], [blue]])
+
+    def test_a_word_split_by_three_chords_is_one_group(self):
+        ko, lo, toc = in_word(chord_segment(CHORD, run("ko"))), in_word(chord_segment(CHORD, run("lo"))), chord_segment(CHORD, run("toč"))
+        self.assertEqual(songbook.word_groups([ko, lo, toc]), [[ko, lo, toc]])
+
+    def test_text_that_flows_is_not_grouped(self):
+        with_tail = in_word(chord_segment(CHORD, run("seven klo")))  # the tail " klo" flows, with a soft hyphen
+        without_chord = in_word(chord_segment(None, run("Buongiorno I")))
+        bouk = chord_segment(CHORD, run("bouk"))
+        self.assertEqual(songbook.word_groups([with_tail, bouk]), [[with_tail], [bouk]])
+        self.assertEqual(songbook.word_groups([without_chord, bouk]), [[without_chord], [bouk]])
+
+    def test_only_a_segment_with_a_chord_joins_a_group(self):
+        fee = in_word(chord_segment(CHORD, run("fee")))
+        self.assertEqual(songbook.word_groups([fee, SCORE]), [[fee], [SCORE]])
+
+
 if __name__ == "__main__":
     unittest.main()
