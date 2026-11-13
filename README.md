@@ -212,8 +212,9 @@ hyphen, in the book and here.
 **The font size** buttons (`static/songbook.js`) are hidden without JavaScript;
 the choice is remembered in the browser. The song reads the same without them.
 
-**Keep the screen on** (`static/wake-lock.js`, D-174): the button *Nezhasínat
-displej* on a song uses the Screen Wake Lock API. It is hidden without
+**Keep the screen on** (`static/wake-lock.js`, D-174): a small button with a
+coffee cup beside A− and A+ (its label and tooltip: *Nezhasínat displej*) uses
+the Screen Wake Lock API. It is hidden without
 JavaScript and where the browser has no such API (it needs https, or
 `localhost`). The browser drops the lock when the page is hidden, so the script
 asks again when the page is shown. The choice is kept for the tab

@@ -33,11 +33,22 @@
     {# Hidden until songbook.js (font size) and wake-lock.js (the screen) show them: without
        JavaScript, or without the API, they could do nothing. #}
     <div class="song-tools">
-      <div class="font-size-control" hidden>
-        <button type="button" data-font-step="-1" aria-label="Zmenšit písmo">A&minus;</button>
-        <button type="button" data-font-step="1" aria-label="Zvětšit písmo">A+</button>
+      <div class="song-buttons">
+        <div class="font-size-control" hidden>
+          <button type="button" data-font-step="-1" aria-label="Zmenšit písmo">A&minus;</button>
+          <button type="button" data-font-step="1" aria-label="Zvětšit písmo">A+</button>
+        </div>
+        {# A coffee cup, the usual sign for "keep awake"; the label says it in words. #}
+        <button type="button" class="wake-lock-toggle" aria-pressed="false" aria-label="Nezhasínat displej" title="Nezhasínat displej" hidden>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            <line x1="6" y1="1" x2="6" y2="4"></line>
+            <line x1="10" y1="1" x2="10" y2="4"></line>
+            <line x1="14" y1="1" x2="14" y2="4"></line>
+          </svg>
+        </button>
       </div>
-      <button type="button" class="wake-lock-toggle" aria-pressed="false" hidden>Nezhasínat displej</button>
       <a class="song-pdf" href="{{ site.pdf_path }}#page={{ song.page }}">otevřít v PDF (strana {{ song.page }})</a>
     </div>
   </header>
