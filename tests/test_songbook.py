@@ -50,6 +50,7 @@ class BodyLinesTest(unittest.TestCase):
             {"type": "speakerBlock", "lines": lines[2:3]},
             {"type": "cueBlock", "line": lines[3]},
             {"type": "note"},
+            {"type": "remark"},
             {"type": "rule"},
         ]
         self.assertEqual(list(songbook.body_lines(song("a", body))), lines)
@@ -157,6 +158,7 @@ class LyricsLinesTest(unittest.TestCase):
             {"type": "block", "lines": [words, chords_only]},
             {"type": "cueBlock", "line": line(self.lyrics_segment(None, run("lo")))},
             {"type": "note", "content": [run("not lyrics")]},
+            {"type": "remark", "lines": [[run("not lyrics either")]]},
         ]
         self.assertEqual(songbook.lyrics_lines(song("a", body)), ["la", "lo"])
 

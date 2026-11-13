@@ -82,6 +82,7 @@
 {%- elif item.type == "speakerBlock" -%}{{ block(item.name ~ ":", item.lines, "block-speaker") }}
 {%- elif item.type == "cueBlock" -%}{{ block(item.label, [item.line], "block-cue") }}
 {%- elif item.type == "note" -%}<p class="song-note">{{ text(item.content) }}</p>
+{%- elif item.type == "remark" -%}<p class="song-remark">{% for line in item.lines %}{{ text(line) }}{% if not loop.last %}<br>{% endif %}{% endfor %}</p>
 {%- elif item.type == "rule" -%}<hr class="rule rule-{{ item.kind }}">
 {%- endif -%}
 {%- endmacro %}

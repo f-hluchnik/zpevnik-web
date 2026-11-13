@@ -25,6 +25,24 @@ def render_line(*items):
     return str(template.module.line({"groupStart": False, "items": list(items)}))
 
 
+def render_body_item(item):
+    template = build.env.get_template("_song.html")
+    return str(template.module.body_item(item))
+
+
+class RemarkHtmlTest(unittest.TestCase):
+    def test_a_remark_is_a_paragraph_with_a_line_break_between_its_lines(self):
+        italic = {"type": "run", "text": "D", "style": ["italic"]}
+        remark = {"type": "remark", "lines": [[run("4/4 | 3/4")], [run("G "), italic]]}
+        self.assertEqual(
+            render_body_item(remark),
+            '<p class="song-remark">4/4 | 3/4<br>G <span class="run-italic">D</span></p>')
+
+    def test_a_remark_of_one_line_has_no_line_break(self):
+        self.assertEqual(render_body_item({"type": "remark", "lines": [[run("interludium")]]}),
+                         '<p class="song-remark">interludium</p>')
+
+
 class LineHtmlTest(unittest.TestCase):
     def test_a_column_and_its_tail_with_no_space_between_the_elements(self):
         self.assertEqual(
