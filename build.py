@@ -78,9 +78,13 @@ DOWNLOAD_DIR = ROOT / "build"  # release assets used at build time but not publi
 SERVE_ADDRESS = ("localhost", 8000)
 
 VERSION_FILE = ROOT / "version.txt"  # written by the songbook repo's CI after each release
+# The release before the last change of the song count, written by the same CI
+# with version.txt: "Jaké písničky přibyly?" compares the two releases (D-183).
+PREVIOUS_VERSION_FILE = ROOT / "previous-version.txt"
 
 # Where the PDFs come from: the release `v<version.txt>` of the songbook repo.
 SONGBOOK_RELEASE_URL = "https://github.com/f-hluchnik/zpevnik/releases/download/v{version}/{asset}"
+SONGBOOK_COMPARE_URL = "https://github.com/f-hluchnik/zpevnik/compare/v{previous}...v{version}"
 DOWNLOAD_TIMEOUT_SECONDS = 60
 PDF_MAGIC = b"%PDF-"
 FILES_URL_PATH = "/static/files/"  # where the PDFs are served; static/files/ holds the koledy book
@@ -262,11 +266,27 @@ def parse_page(raw: str, path: Path) -> dict:
     }
 
 
+def read_version_file(path: Path, purpose: str) -> str:
+    """The songbook version a file names; the build stops if the file is missing."""
+    if not path.exists():
+        sys.exit(f"{path.name} is missing: it {purpose}.")
+    return path.read_text(encoding="utf-8").strip()
+
+
 def read_version() -> str:
     """The songbook version whose release this build publishes."""
-    if not VERSION_FILE.exists():
-        sys.exit(f"{VERSION_FILE.name} is missing: it names the songbook release to download.")
-    return VERSION_FILE.read_text(encoding="utf-8").strip()
+    return read_version_file(VERSION_FILE, "names the songbook release to download")
+
+
+def read_previous_version() -> str:
+    """The songbook version the new songs are counted from (PREVIOUS_VERSION_FILE)."""
+    return read_version_file(PREVIOUS_VERSION_FILE, "names the release the new songs are counted from")
+
+
+def changes_url(version: str, previous_version: str) -> str:
+    """What changed since the song count last changed: the comparison of the two
+    releases, where the added songs are among the changed files."""
+    return SONGBOOK_COMPARE_URL.format(previous=previous_version, version=version)
 
 
 def download_links(version: str) -> list[dict]:
@@ -281,13 +301,14 @@ def download_links(version: str) -> list[dict]:
     ]
 
 
-def load_pages(version: str) -> list[dict]:
+def load_pages(version: str, previous_version: str) -> list[dict]:
     """Load every page in content/pages/.
 
     A page is either a plain `*.md` file, or a `*.md.tpl` template rendered
-    in-memory: __VERSION__ becomes the songbook version and __DOWNLOADS__ the
-    edition download buttons. Templates are never written back to disk, so a
-    local `python build.py` run leaves the working tree untouched.
+    in-memory: __VERSION__ becomes the songbook version, __CHANGES_URL__ the
+    comparison with the release before the song count changed (changes_url)
+    and __DOWNLOADS__ the edition download buttons. Templates are never written
+    back to disk, so a local `python build.py` run leaves the working tree untouched.
     """
     pages = [
         parse_page(path.read_text(encoding="utf-8"), path)
@@ -297,6 +318,7 @@ def load_pages(version: str) -> list[dict]:
     SITE["version"] = version
     placeholders = {
         "__VERSION__": version,
+        "__CHANGES_URL__": changes_url(version, previous_version),
         "__DOWNLOADS__": env.get_template("_downloads.html").render(
             downloads=download_links(version)
         ),
@@ -444,7 +466,7 @@ def build(songs_json: Path | None = None, scores_zip: Path | None = None) -> Non
     # unreachable release leaves the previous build in place instead of an
     # empty directory.
     version = read_version()
-    pages = load_pages(version)
+    pages = load_pages(version, read_previous_version())
     edition_pdfs = fetch_edition_pdfs(version)
     document = load_songs_document(version, songs_json)
     songs = document["songs"]

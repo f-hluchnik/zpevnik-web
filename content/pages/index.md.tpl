@@ -1,6 +1,6 @@
 <!-- index.md AUTO-GENERATED from index.md.tpl — edit that file instead -->
 <div class="download-group">
-  <p class="version-tag">aktuální verze zpěvníku: <span class="version-number">__VERSION__</span> &middot; <a href="https://github.com/f-hluchnik/zpevnik/releases/">Jaké písničky přibyly?</a></p>
+  <p class="version-tag">aktuální verze zpěvníku: <span class="version-number">__VERSION__</span> &middot; <a href="__CHANGES_URL__">Jaké písničky přibyly?</a></p>
 __DOWNLOADS__
 </div>
 
