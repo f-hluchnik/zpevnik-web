@@ -21,6 +21,7 @@ check_site.py        the check of the built site: song pages present, links reso
 static/              CSS, JS, icons — copied to dist/static/ as-is
 static/files/        the koledy songbook (the other PDFs are downloaded, see below)
 version.txt          the songbook release this build publishes (written by its CI)
+previous-version.txt the release before the song count last changed (written with it)
 tests/               unit tests of build.py (standard library only)
 build.py             reads all of the above, writes dist/
 build/               songs.json downloaded from the release; gitignored, not published
@@ -72,6 +73,11 @@ downloads the PDFs of the release `v<version.txt>` into `dist/static/files/`;
 that push to `main` is also what updates the live site. Nobody updates a PDF
 by hand.
 
+With `version.txt` the songbook CI writes `previous-version.txt`: the release
+before the last change of the song count (the second number of the version).
+The front page's "Jaké písničky přibyly?" links to GitHub's comparison of the
+two releases, where the new songs are among the changed files.
+
 Which editions the front page shows is the list `EDITION_DOWNLOADS` in
 `build.py`:
 
@@ -87,7 +93,8 @@ to it), so the full book keeps that name whatever its button looks like.
 To show a new edition, add one line; when `zpevnik-lite` exists, make it the
 first entry and give the full book a secondary label.
 
-The build fails, and the previous `dist/` stays, if `version.txt` is missing or
+The build fails, and the previous `dist/` stays, if `version.txt` or
+`previous-version.txt` is missing or
 a release asset cannot be downloaded or is not a PDF. The koledy songbook is
 not an edition of the songbook: it is a plain file in `static/files/`, replaced
 by hand, keeping its name.
