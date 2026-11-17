@@ -79,7 +79,7 @@ SERVE_ADDRESS = ("localhost", 8000)
 
 VERSION_FILE = ROOT / "version.txt"  # written by the songbook repo's CI after each release
 # The release before the last change of the song count, written by the same CI
-# with version.txt: "Jaké písničky přibyly?" compares the two releases (D-183).
+# with version.txt: "Jaké písničky přibyly?" compares the two releases (D-184).
 PREVIOUS_VERSION_FILE = ROOT / "previous-version.txt"
 
 # Where the PDFs come from: the release `v<version.txt>` of the songbook repo.
