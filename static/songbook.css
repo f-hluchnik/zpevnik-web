@@ -18,9 +18,52 @@
 
 .songbook {
   --chord:         light-dark(#b82727, #ff8f8f);  /* the book's chord red       */
+  --chord-font:    "Chord Letters", "Chord Accidentals", "Chord Symbols", var(--sans);
   --chord-sep:     0.5em;
   --chord-run-sep: 1em;
   --label-width:   2.4em;
+
+  /* A raised or lowered part of a chord (7, △, ♯, the bass note) is set as the
+     book sets it: 0.7 of the chord, and shifted by LaTeX's \textsuperscript
+     and \textsubscript amounts (the shifts are in em of the part itself). */
+  --script-size:      0.7em;
+  --superscript-lift: 0.5em;
+  --subscript-drop:   0.3em;
+}
+
+/* The chords have their own type, apart from the lyrics: the lyrics' font draws
+   C and G almost alike at this size. All files are self-hosted (static/fonts/,
+   see its README); no request goes to another site. The symbols the letter font
+   lacks come from a bold face of their own, not from whatever the reader's
+   system offers; its glyphs are drawn light and small for a raised part, so
+   each kind is scaled (size-adjust) until it reads at 0.7 of the chord. The two
+   faces are one file, which the browser fetches once. `block` keeps the chords
+   from being set twice: a column's width depends on the font, and the font is
+   a small, preloaded file. A character of a chord that none of the faces has is
+   found by check_site.py (it reads the unicode-ranges below). */
+@font-face {
+  font-family: "Chord Letters";
+  font-weight: 700;
+  font-display: block;
+  src: url("/static/fonts/ibm-plex-sans-condensed-latin-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Chord Accidentals";  /* ♭ ♯ */
+  font-weight: 700;
+  font-display: block;
+  src: url("/static/fonts/dejavu-sans-bold-chord-symbols.woff2") format("woff2");
+  unicode-range: U+266D, U+266F;
+  size-adjust: 140%;
+}
+
+@font-face {
+  font-family: "Chord Symbols";  /* △ ∘ ∅ */
+  font-weight: 700;
+  font-display: block;
+  src: url("/static/fonts/dejavu-sans-bold-chord-symbols.woff2") format("woff2");
+  unicode-range: U+25B3, U+2218, U+2205;
+  size-adjust: 115%;
 }
 
 /* 2. Page --------------------------------------------------------------- */
@@ -100,13 +143,22 @@
   display: block;
   padding-right: var(--chord-sep);
   color: var(--chord);
+  font-family: var(--chord-font);
   font-weight: 700;
   line-height: 1.3;
   white-space: nowrap;
 }
 
+/* Shifted with `position`, not `vertical-align`: the line keeps its height. */
 .chord sup,
-.chord sub { line-height: 0; }
+.chord sub {
+  position: relative;
+  font-size: var(--script-size);
+  line-height: 0;
+  vertical-align: baseline;
+}
+.chord sup { top: calc(-1 * var(--superscript-lift)); }
+.chord sub { top: var(--subscript-drop); }
 
 /* The spaces of the text are the song's: keep them, also at the ends. */
 .lyrics {

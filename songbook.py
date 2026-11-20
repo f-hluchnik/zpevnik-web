@@ -52,6 +52,19 @@ def score_names(songs: list[dict]) -> set[str]:
     }
 
 
+def chord_characters(songs: list[dict]) -> set[str]:
+    """Every character that stands in a chord of the songs."""
+    return {
+        character
+        for song in songs
+        for line in body_lines(song)
+        for item in line["items"]
+        if item["type"] == "segment" and item["chord"]
+        for part in item["chord"]
+        for character in part["text"]
+    }
+
+
 def is_chord_only_line(line: dict) -> bool:
     """A line of chords with no words at all (an intro, `\\chords{}` in the book).
 

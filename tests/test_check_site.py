@@ -90,5 +90,38 @@ class MissingSongPagesTest(SiteTestCase):
         )
 
 
+SYMBOLS_CSS = """
+@font-face { font-family: "Chord Letters"; src: url(a.woff2); }
+@font-face { font-family: "Chord Accidentals"; src: url(b.woff2); unicode-range: U+266D, U+266F; }
+@font-face { font-family: "Chord Symbols"; src: url(b.woff2); unicode-range: U+25B0-25B3; }
+"""
+
+
+def chord_song(*texts):
+    chord = [{"text": text, "position": "base"} for text in texts]
+    segment = {"type": "segment", "chord": chord, "lyrics": [], "endsInWord": False}
+    return {"id": "a", "body": [{"type": "block", "lines": [{"groupStart": False, "items": [segment]}]}]}
+
+
+class ChordSymbolsInCssTest(unittest.TestCase):
+    def test_reads_single_characters_and_ranges_of_every_face_that_has_a_range(self):
+        self.assertEqual(check_site.chord_symbols_in_css(SYMBOLS_CSS),
+                         {"♭", "♯", "\u25b0", "\u25b1", "\u25b2", "△"})
+
+    def test_a_style_sheet_without_the_face_gives_nothing(self):
+        self.assertEqual(check_site.chord_symbols_in_css("body { color: red }"), set())
+
+
+class UnfontedChordCharactersTest(unittest.TestCase):
+    def test_ascii_the_ellipsis_and_the_symbols_of_the_face_are_drawn(self):
+        self.assertEqual(check_site.unfonted_chord_characters([chord_song("Am7/G", "♯", "△", "…")], SYMBOLS_CSS), [])
+
+    def test_a_character_in_no_font_is_reported(self):
+        self.assertEqual(
+            check_site.unfonted_chord_characters([chord_song("C", "∅")], SYMBOLS_CSS),
+            ["chord character '∅' (U+2205) is in no chord font"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

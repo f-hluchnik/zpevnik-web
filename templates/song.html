@@ -14,6 +14,8 @@
 
 {% block head %}
   {{ super() }}
+  {# The chords' font is found only when the style sheet is parsed; asking for it now saves a round trip. #}
+  <link rel="preload" href="/static/fonts/ibm-plex-sans-condensed-latin-700.woff2" as="font" type="font/woff2" crossorigin>
   <script src="{{ asset_url('songbook.js') }}"></script>
   <script src="{{ asset_url('wake-lock.js') }}" defer></script>
 {% endblock %}
