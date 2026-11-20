@@ -64,6 +64,14 @@ class ScoreNamesTest(unittest.TestCase):
         self.assertEqual(songbook.score_names([with_score, other_score, without]), {"riff", "tune"})
 
 
+class ChordCharactersTest(unittest.TestCase):
+    def test_collects_the_characters_of_every_part_of_every_chord(self):
+        sharp_minor = [{"text": "F", "position": "base"}, {"text": "♯", "position": "superscript"},
+                       {"text": "m", "position": "base"}]
+        body = [{"type": "block", "lines": [line(segment(sharp_minor, "text"), segment(None, "no chord"))]}]
+        self.assertEqual(songbook.chord_characters([song("a", body)]), {"F", "♯", "m"})
+
+
 class ChordOnlyLineTest(unittest.TestCase):
     def test_chords_without_words_are_a_chord_only_line(self):
         self.assertTrue(songbook.is_chord_only_line(line(segment(CHORD, ""), segment(CHORD, ""))))

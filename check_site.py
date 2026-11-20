@@ -5,7 +5,9 @@
 It fails (exit status 1, the problems listed) when
   - a song of songs.json has no page,
   - a link, script, style sheet, image or form action of any page points to a
-    file the site does not have, or to an anchor (#id) its page does not have.
+    file the site does not have, or to an anchor (#id) its page does not have,
+  - a chord has a character that neither chord font draws (it would be taken
+    from the reader's system).
 Only the site itself is checked: addresses with a scheme (https:, mailto:) and
 the fonts and files the style sheets name are not.
 """
@@ -13,17 +15,26 @@ the fonts and files the style sheets name are not.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urldefrag, urljoin, urlsplit
 
 import build
+import songbook
 
 INDEX_FILE_NAME = "index.html"
 # The attribute of a tag that names another file of the site.
 REFERENCE_ATTRIBUTES = {"a": "href", "link": "href", "script": "src", "img": "src", "form": "action"}
 PROBLEMS_SHOWN = 20
+
+# The chord fonts (static/fonts/README.md). The letter font draws ASCII and the
+# ellipsis; every other character of a chord must be in the unicode-range of a
+# symbols face in songbook.css (only those faces have a unicode-range).
+CHORD_LETTER_FONT_EXTRA_CHARACTERS = {"\u2026"}
+UNICODE_RANGE = re.compile(r"unicode-range:\s*([^;]+);")
+UNICODE_RANGE_ENTRY = re.compile(r"U\+([0-9A-Fa-f]+)(?:-([0-9A-Fa-f]+))?")
 
 
 class PageReader(HTMLParser):
@@ -101,6 +112,26 @@ def missing_song_pages(site_dir: Path, song_ids: list[str], songbook_path: str) 
     ]
 
 
+def chord_symbols_in_css(css: str) -> set[str]:
+    """The characters the style sheet gives to the symbol faces (their unicode-ranges)."""
+    return {
+        chr(code)
+        for ranges in UNICODE_RANGE.findall(css)
+        for first, last in UNICODE_RANGE_ENTRY.findall(ranges)
+        for code in range(int(first, 16), int(last or first, 16) + 1)
+    }
+
+
+def unfonted_chord_characters(songs: list[dict], css: str) -> list[str]:
+    """The problems of chord characters no chord font draws."""
+    drawn = chord_symbols_in_css(css) | CHORD_LETTER_FONT_EXTRA_CHARACTERS
+    return [
+        f"chord character {character!r} (U+{ord(character):04X}) is in no chord font"
+        for character in sorted(songbook.chord_characters(songs))
+        if ord(character) > 127 and character not in drawn
+    ]
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check the built site: every song has a page, every link leads somewhere.")
     parser.add_argument("site_dir", nargs="?", type=Path, default=build.OUTPUT_DIR, help="the built site (default: dist/)")
@@ -113,8 +144,10 @@ def main() -> int:
     arguments = parse_arguments()
     document = build.parse_songs_document(arguments.songs_json.read_bytes(), str(arguments.songs_json))
     song_ids = [song["id"] for song in document["songs"]]
+    songbook_css = (arguments.site_dir / "static" / "songbook.css").read_text(encoding="utf-8")
     problems = (missing_song_pages(arguments.site_dir, song_ids, build.SONGBOOK_URL_PATH)
-                + link_problems(arguments.site_dir))
+                + link_problems(arguments.site_dir)
+                + unfonted_chord_characters(document["songs"], songbook_css))
     for problem in problems[:PROBLEMS_SHOWN]:
         print(problem)
     if len(problems) > PROBLEMS_SHOWN:

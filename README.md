@@ -19,6 +19,7 @@ templates/*.html     one file per shape  (see below)
 songbook.py          helpers of the song pages (tested in tests/)
 check_site.py        the check of the built site: song pages present, links resolve
 static/              CSS, JS, icons — copied to dist/static/ as-is
+static/fonts/        the fonts of the chords, self-hosted (its README says which and why)
 static/files/        the koledy songbook (the other PDFs are downloaded, see below)
 version.txt          the songbook release this build publishes (written by its CI)
 previous-version.txt the release before the song count last changed (written with it)
